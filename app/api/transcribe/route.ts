@@ -69,15 +69,20 @@ export async function POST(request: Request) {
     }
 
     console.log('Creating audio file for OpenAI');
-    const audioFile = new File(
-      [Buffer.from(base64Data, 'base64')],
-      'audio.webm',
-      { type: 'audio/webm' }
-    );
+    const audioBuffer = Buffer.from(base64Data, 'base64');
+    const audioFile = {
+      buffer: audioBuffer,
+      name: 'audio.webm',
+      type: 'audio/webm'
+    };
 
     console.log('Sending to OpenAI');
     const response = await openai.audio.transcriptions.create({
-      file: audioFile,
+      file: new File(
+        [audioBuffer],
+        'audio.webm',
+        { type: 'audio/webm' }
+      ),
       model: 'whisper-1',
       response_format: 'json',
     });
