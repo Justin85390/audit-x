@@ -82,7 +82,7 @@ export default function App() {
       case 8:
         return <WritingPage onNext={nextPage} updateUserData={updateUserData} />
       case 9:
-        return <ReportPage userData={userData} />
+        return <ReportPage userData={userData} onNext={nextPage} />
       default:
         return <div>Page not found</div>
     }
