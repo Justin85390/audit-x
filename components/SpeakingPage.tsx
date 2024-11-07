@@ -92,7 +92,7 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-center">
-          Let's talk
+          {"Let's talk"}
         </h1>
         
         <div className="flex flex-col items-center space-y-8">

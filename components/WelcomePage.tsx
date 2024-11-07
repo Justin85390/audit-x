@@ -73,9 +73,6 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
   };
 
   const sendToGoogleCloudOlivia = async (audioBlob: Blob) => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_API_KEY;
-    const url = `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`;
-
     try {
       console.log("Sending audio to server...");
       
@@ -101,7 +98,7 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
         }
       };
 
-      const response = await fetch(url, {
+      const response = await fetch('/api/speech-to-text', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +205,7 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
       {/* Title Section */}
       <h1 className="text-3xl font-bold mb-4 text-center">Welcome to Linguaphone</h1>
       <p className="text-lg mb-8 text-center text-gray-600">
-        Your journey starts with just a few questions. Press "Ready" to begin.
+        Your journey starts with just a few questions. Press &quot;Ready&quot; to begin.
       </p>
       
       {/* Centered Image */}
@@ -302,10 +299,4 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
       </div>
     </div>
   );
-}
-
-// Helper function to send audio to Google Cloud (implement this based on your API setup)
-async function sendToGoogleCloudOlivia(audioBlob: Blob) {
-  // Implement your Google Cloud API call here
-  console.log('Sending audio to Google Cloud...');
 }
