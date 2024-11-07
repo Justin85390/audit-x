@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --force && npm run build"
+  command = "CI= npm run build"
   publish = ".next"
 
 [[plugins]]
@@ -8,3 +8,4 @@
 [build.environment]
   NEXT_PUBLIC_APP_ENV = "production"
   NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
