@@ -78,11 +78,17 @@ export async function POST(request: Request) {
 
     console.log('Sending to OpenAI');
     const response = await openai.audio.transcriptions.create({
-      file: new File(
-        [audioBuffer],
-        'audio.webm',
-        { type: 'audio/webm' }
-      ),
+      file: {
+        data: audioBuffer,
+        name: 'audio.webm',
+        type: 'audio/webm',
+        stream: () => new ReadableStream({
+          start(controller) {
+            controller.enqueue(audioBuffer);
+            controller.close();
+          }
+        })
+      } as any,
       model: 'whisper-1',
       response_format: 'json',
     });
