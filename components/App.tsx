@@ -9,9 +9,22 @@ import ReadingComprehensionPage from './ReadingComprehensionPage'
 import WritingPage from './WritingPage'
 import ReportPage from './ReportPage'
 
+// Define more specific interfaces for your data
+interface ContactDetails {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+interface LearnerData {
+  level?: string;
+  goals?: string[];
+  availability?: string;
+}
+
 export interface UserData {
-  contactDetails: Record<string, any>;
-  learnerData: Record<string, any>;
+  contactDetails: ContactDetails;
+  learnerData: LearnerData;
   speakingData: {
     transcription: string;
     timestamp: string;
@@ -30,13 +43,22 @@ export interface UserData {
   };
 }
 
+// Type for the update function
+type UpdateUserDataFunction = (key: keyof UserData, value: UserData[keyof UserData]) => void;
+
+interface PageProps {
+  onNext: () => void;
+  updateUserData: UpdateUserDataFunction;
+}
+
 interface ReportPageProps {
   userData: UserData;
+  onNext: () => void;
 }
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState(1)
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UserData>({
     contactDetails: {},
     learnerData: {},
     speakingData: {
@@ -58,8 +80,8 @@ export default function App() {
   })
 
   const nextPage = () => setCurrentPage((prev) => prev + 1)
-
-  const updateUserData = (key: string, value: any) => {
+  
+  const updateUserData: UpdateUserDataFunction = (key, value) => {
     setUserData((prev) => ({ ...prev, [key]: value }))
   }
 

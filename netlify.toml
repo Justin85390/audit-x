@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --force && NEXT_PUBLIC_APP_ENV=production npm run build"
+  command = "npm install --force && npm run build"
   publish = ".next"
 
 [[plugins]]
@@ -7,9 +7,4 @@
 
 [build.environment]
   NEXT_PUBLIC_APP_ENV = "production"
-  NODE_VERSION = "20"  # Setting to a stable version compatible with Next.js 15
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+  NODE_VERSION = "20"
