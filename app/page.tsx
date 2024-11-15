@@ -1,14 +1,16 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
-import WelcomePage from '../components/WelcomePage';
-import ContactDetailsPage from '../components/ContactDetailsPage';
-import LearnerDataPage from '../components/LearnerDataPage';
-import SpeakingPage from '../components/SpeakingPage';
-import OpinionPage from '../components/OpinionPage';
-import ListeningComprehensionPage from '../components/ListeningComprehensionPage';
-import ReadingComprehensionPage from '../components/ReadingComprehensionPage';
-import WritingPage from '../components/WritingPage';
+import WelcomePage from '@/components/WelcomePage';
+import ContactDetailsPage from '@/components/ContactDetailsPage';
+import LearnerDataPage from '@/components/LearnerDataPage';
+import SpeakingPage from '@/components/SpeakingPage';
+import OpinionPage from '@/components/OpinionPage';
+import ListeningComprehensionPage from '@/components/ListeningComprehensionPage';
+import ReadingComprehensionPage from '@/components/ReadingComprehensionPage';
+import WritingPage from '@/components/WritingPage';
 import ReportPage from '@/components/ReportPage';
 
 export default function Home() {
@@ -16,10 +18,13 @@ export default function Home() {
   const [userData, setUserData] = useState({
     contactDetails: {
       firstName: '',
-      lastName: ''
+      lastName: '',
+      email: '',
+      phoneNumber: ''
     },
     learnerData: {
       timeToLearn: '',
+      motivation: '',
       interests: ''
     },
     speakingData: {
