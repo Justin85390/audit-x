@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { OLIVIA_BASE } from '../../lib/olivia-instructions';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -17,10 +18,23 @@ export async function POST(request: Request) {
     // Handle text input (for chat)
     if (body.text) {
       // Get chat response from OpenAI
+      const getInstructions = (pageType: string) => {
+        switch(pageType) {
+          case 'teaching':
+            return OLIVIA_BASE;
+          case 'conversation':
+            return OLIVIA_BASE;
+          default:
+            return OLIVIA_BASE;
+        }
+      };
+
+      const instructions = getInstructions(request.headers.get('x-page-type') || 'default');
+
       const chatResponse = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
-          { role: "system", content: "You are Olivia, a friendly AI assistant." },
+          { role: "system", content: instructions },
           { role: "user", content: body.text }
         ]
       });
@@ -87,7 +101,56 @@ export async function POST(request: Request) {
     });
 
     console.log('Received OpenAI response');
-    return NextResponse.json({ transcription: response.text });
+    const transcription = response.text;
+
+    // For Welcome page, continue with chat response and audio
+    if (request.headers.get('x-page-type') !== 'opinion') {
+      // Get chat response from OpenAI
+      const getInstructions = (pageType: string) => {
+        switch(pageType) {
+          case 'teaching':
+            return OLIVIA_BASE;
+          case 'conversation':
+            return OLIVIA_BASE;
+          default:
+            return OLIVIA_BASE;
+        }
+      };
+
+      const instructions = getInstructions(request.headers.get('x-page-type') || 'default');
+
+      const chatResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: instructions },
+          { role: "user", content: transcription }
+        ]
+      });
+
+      const responseText = chatResponse.choices[0].message.content ?? "I'm sorry, I couldn't generate a response.";
+
+      // Generate speech from the response
+      const speechResponse = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: "alloy",
+        input: responseText,
+      });
+
+      // Convert the audio to base64
+      const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
+      const audioBase64 = audioBuffer.toString('base64');
+      const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
+
+      return NextResponse.json({
+        transcription: transcription,
+        response: responseText,
+        audioUrl: audioUrl
+      });
+    }
+
+    // For Opinion page, just return transcription
+    return NextResponse.json({ transcription: transcription });
+
   } catch (error: any) {
     console.error('API Error:', {
       message: error.message,

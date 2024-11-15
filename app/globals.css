@@ -30,3 +30,15 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes dots {
+  0%, 20% {
+    content: ".";
+  }
+  40% {
+    content: "..";
+  }
+  60%, 100% {
+    content: "...";
+  }
+}

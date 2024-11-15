@@ -7,6 +7,7 @@ interface SpeakingPageProps {
 
 export default function SpeakingPage({ onNext, updateUserData }: SpeakingPageProps) {
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const videoId = "DXQzd0REkXY";
@@ -23,6 +24,7 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
       };
 
       mediaRecorder.onstop = async () => {
+        setIsLoading(true);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
         try {
@@ -37,6 +39,7 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'x-page-type': 'speaking'
             },
             body: JSON.stringify({
               audio: base64Audio
@@ -44,8 +47,7 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to transcribe audio');
+            throw new Error(`Server error: ${response.status}`);
           }
 
           const data = await response.json();
@@ -58,9 +60,12 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
           });
 
           onNext(); // Move to next page after successful transcription
+
         } catch (error) {
           console.error('Transcription error:', error);
           alert('Error processing your answer. Please try again.');
+        } finally {
+          setIsLoading(false);
         }
       };
 
@@ -88,6 +93,46 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
     }
   };
 
+  const handleRecordingComplete = async (audioBlob: Blob) => {
+    setIsLoading(true);
+    try {
+      // Convert audio to base64
+      const base64Audio = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(audioBlob);
+      });
+
+      // Get transcription only
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ audio: base64Audio }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to transcribe audio');
+      }
+
+      const data = await response.json();
+      
+      // Just store transcription and move on
+      updateUserData('speakingData', {
+        transcription: data.transcription,
+        timestamp: new Date().toISOString()
+      });
+      
+      onNext();
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error processing your answer. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -112,20 +157,33 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
 
           {/* Form Container */}
           <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            <h3 className="text-2xl font-semibold text-center mb-8 text-gray-800">
+            <h3 className="text-2xl font-semibold text-center mb-2 text-gray-800">
               What is the most difficult thing about learning English?
             </h3>
-            <div className="flex justify-center">
+            <p className="text-sm text-gray-400 text-center mb-8 italic">
+              Common responses: grammar, listening comprehension, pronunciation, writing emails, understanding accents in business meetings
+            </p>
+            <div className="flex flex-col items-center">
               <button
                 onClick={toggleRecording}
+                disabled={isLoading}
                 className={`
                   ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
+                  ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
                   text-white font-bold py-3 px-6 rounded-full transition-colors
                   flex items-center justify-center min-w-[200px]
+                  mb-4
                 `}
               >
-                {isRecording ? 'Stop Recording' : 'Record your Answer'}
+                {isLoading ? 'Processing...' : isRecording ? 'Stop Recording' : 'Record your Answer'}
               </button>
+
+              {/* Loading message */}
+              {isLoading && (
+                <p className="text-gray-600 text-center mt-2">
+                  Processing audio... This may take a few moments.
+                </p>
+              )}
             </div>
           </div>
         </div>

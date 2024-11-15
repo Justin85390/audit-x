@@ -49,6 +49,7 @@ export default function LearnerDataPage({
             value={formData.timeToLearn}
             onChange={handleChange}
             required
+            placeholder="2 hours a week / 6 hours per month"
             className={textareaStyles}
           />
         </div>
@@ -60,6 +61,7 @@ export default function LearnerDataPage({
             value={formData.motivation}
             onChange={handleChange}
             required
+            placeholder="For my job / To study abroad / For travel"
             className={textareaStyles}
           />
         </div>
@@ -71,6 +73,7 @@ export default function LearnerDataPage({
             value={formData.interests}
             onChange={handleChange}
             required
+            placeholder="Movies, sports, cooking, technology..."
             className={textareaStyles}
           />
         </div>
