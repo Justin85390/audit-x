@@ -22,22 +22,28 @@ interface LearnerData {
   availability?: string;
 }
 
-export interface UserData {
-  contactDetails: ContactDetails;
-  learnerData: LearnerData;
+// Define the correct interface for UserData
+interface UserData {
+  contactDetails: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  learnerData: {
+    timeToLearn: string;
+    motivation: string;
+    interests: string;
+  };
   speakingData: {
     transcription: string;
-    timestamp: string;
   };
   opinionData: {
     transcription: string;
     analysis: string;
-    timestamp: string;
   };
   listeningScore: number;
-  listeningCorrectAnswers: number;
   readingScore: number;
-  readingCorrectAnswers: number;
   writingData: {
     email: string;
   };
@@ -59,24 +65,29 @@ interface ReportPageProps {
 export default function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [userData, setUserData] = useState<UserData>({
-    contactDetails: {},
-    learnerData: {},
+    contactDetails: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: ''
+    },
+    learnerData: {
+      timeToLearn: '',
+      motivation: '',
+      interests: ''
+    },
     speakingData: {
-      transcription: '',
-      timestamp: '',
+      transcription: ''
     },
     opinionData: {
       transcription: '',
-      analysis: '',
-      timestamp: '',
+      analysis: ''
     },
     listeningScore: 0,
-    listeningCorrectAnswers: 0,
     readingScore: 0,
-    readingCorrectAnswers: 0,
     writingData: {
-      email: '',
-    },
+      email: ''
+    }
   })
 
   const nextPage = () => setCurrentPage((prev) => prev + 1)
