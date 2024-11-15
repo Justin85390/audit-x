@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import InputField from './shared/InputField';
 
@@ -6,13 +6,32 @@ interface WelcomePageProps {
   onNext: () => void;
 }
 
-export default function WelcomePage({ onNext }: WelcomePageProps) {
+const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [oliviaResponse, setOliviaResponse] = useState<string>('');
   const [userTranscript, setUserTranscript] = useState<string>('');
   const [userQuestion, setUserQuestion] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [transcription, setTranscription] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+  const [languageIndex, setLanguageIndex] = useState(0);
+
+  const translations = [
+    { text: "Olivia speaks many languages. Ask her in your language", lang: "en" },
+    { text: "Olivia habla varios idiomas. Pregúntale en tu idioma", lang: "es" },
+    { text: "Olivia parle plusieurs langues. Posez-lui des questions dans votre langue", lang: "fr" },
+    { text: "Olivia spricht viele Sprachen. Fragen Sie sie in Ihrer Sprache", lang: "de" }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLanguageIndex((current) => (current + 1) % translations.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const startRecording = async () => {
     console.log("Starting recording for Olivia...");
@@ -74,62 +93,65 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
 
   const sendToGoogleCloudOlivia = async (audioBlob: Blob) => {
     try {
-      console.log("Sending audio to server...");
-      
-      // Convert audio to base64
-      const base64Audio = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
+      setIsLoading(true);
+      console.log('Sending audio to server...');
+
+      // Convert audio blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
         reader.onloadend = () => {
-          const result = reader.result as string;
-          const base64data = result.split(',')[1];
-          resolve(base64data);
+          const base64Audio = reader.result?.toString();
+          resolve(base64Audio || '');
         };
         reader.readAsDataURL(audioBlob);
       });
 
-      const requestPayload = {
-        config: {
-          encoding: "WEBM_OPUS",
-          sampleRateHertz: 48000,
-          languageCode: "en-US"
-        },
-        audio: {
-          content: base64Audio
-        }
-      };
-
-      const response = await fetch('/api/speech-to-text', {
+      const base64Audio = await base64Promise;
+      
+      const response = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-page-type': 'welcome'
         },
-        body: JSON.stringify(requestPayload)
+        body: JSON.stringify({
+          audio: base64Audio
+        })
       });
 
       if (!response.ok) {
-        throw new Error(`Google Cloud returned an error: ${response.status}`);
+        throw new Error(`Server error: ${response.status}`);
       }
 
       const data = await response.json();
-      if (data?.results?.[0]?.alternatives?.[0]?.transcript) {
-        const transcription = data.results[0].alternatives[0].transcript;
-        console.log("Transcription:", transcription);
-        setUserTranscript(transcription);
-        
-        // Send to OpenAI for response
-        await sendToOpenAI(transcription);
-      } else {
-        throw new Error('No transcription found in the response');
+      console.log('Response from server:', data);
+
+      if (data.transcription) {
+        setTranscription(data.transcription);
+      }
+      if (data.response) {
+        setOliviaResponse(data.response);
+      }
+      if (data.audioUrl) {
+        const audio = new Audio(data.audioUrl);
+        try {
+          await audio.play();
+        } catch (playError) {
+          console.error('Error playing audio:', playError);
+        }
       }
 
     } catch (error) {
       console.error('Detailed error:', error);
-      setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+      setError(error instanceof Error ? error.message : 'Failed to process audio');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSendTypedQuestion = async () => {
     try {
+      setIsLoading(true);
       console.log("Sending typed question:", userQuestion);
       setUserTranscript(userQuestion);
 
@@ -165,6 +187,45 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
     } catch (error) {
       console.error('Error sending typed question:', error);
       setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuggestionClick = async () => {
+    const question = "Tell me about the language audit";
+    setUserQuestion(question);
+    setUserTranscript(question);
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: question,
+          isTyped: true
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process question');
+      }
+
+      setOliviaResponse(data.response);
+      if (data.audioUrl) {
+        const audio = new Audio(data.audioUrl);
+        await audio.play();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setIsLoading(false);
+      setUserQuestion('');
     }
   };
 
@@ -248,27 +309,42 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
             <h4 className="text-sm text-gray-500 mt-2">
               Type in the box below or ask me a question with "Ask Olivia"
             </h4>
+            <p className="text-sm mt-2 bg-yellow-50 px-3 py-1 rounded-lg inline-block transition-opacity duration-500">
+              {translations[languageIndex].text}
+            </p>
           </div>
         </div>
 
         {/* Inner Box for Interaction */}
         <div className="bg-gray-50 rounded-lg p-6 mb-6">
           {/* Text Input with Send Button */}
-          <div className="flex gap-2 mb-4">
-            <InputField
-              value={userQuestion}
-              onChange={(e) => setUserQuestion(e.target.value)}
-              placeholder="Type your question for Olivia..."
-              className="flex-grow"
-            />
-            {userQuestion && (
-              <button 
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full"
-                onClick={handleSendTypedQuestion}
-              >
-                Send
-              </button>
-            )}
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <InputField
+                value={userQuestion}
+                onChange={(e) => setUserQuestion(e.target.value)}
+                placeholder="Type your question for Olivia..."
+                className="flex-grow"
+              />
+              {userQuestion && (
+                <button 
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full"
+                  onClick={handleSendTypedQuestion}
+                >
+                  Send
+                </button>
+              )}
+            </div>
+            
+            {/* Suggestion Bubble */}
+            <button 
+              onClick={handleSuggestionClick}
+              className="self-start px-4 py-2 my-4 bg-yellow-50 hover:bg-yellow-100 
+                rounded-2xl text-gray-600 text-sm transition-colors duration-200 
+                flex items-center gap-2 shadow-sm border border-yellow-100"
+            >
+              💭 Ask about the audit
+            </button>
           </div>
 
           {/* User's transcription */}
@@ -286,7 +362,7 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
         </div>
 
         {/* Voice Recording Button */}
-        <div className="flex justify-center">
+        <div className="flex justify-center items-center gap-3">
           <button 
             className={`${
               isRecording ? 'bg-red-500 hover:bg-red-700' : 'bg-green-500 hover:bg-green-700'
@@ -295,8 +371,17 @@ export default function WelcomePage({ onNext }: WelcomePageProps) {
           >
             {isRecording ? 'Stop Recording' : 'Ask Olivia'}
           </button>
+          
+          {isLoading && (
+            <div className="flex items-center text-gray-500">
+              <span className="animate-pulse">thinking</span>
+              <span className="ml-1">...</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default WelcomePage;

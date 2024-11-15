@@ -15,7 +15,14 @@ export async function POST(request: Request) {
     console.log('Analysis type:', type);
 
     const analysisPrompt = type === 'opinion' 
-      ? `Please analyze the following spoken opinion and provide feedback on clarity, structure, and persuasiveness: "${prompt}"`
+      ? `
+            Analyze this English speaking sample and provide:
+            1. CEFR level (A1, A2, B1, B2, C1, or C2)
+            2. Brief explanation of why this level was assigned
+            3. Key strengths and areas for improvement
+
+            Speaking sample: "${prompt}"
+          `
       : prompt;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

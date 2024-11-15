@@ -104,7 +104,7 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
         if (!response.ok) throw new Error(`Error: ${data.error}`);
         if (!data.transcription) throw new Error(`No transcription in response`);
 
-        await handleRecordingComplete(data.transcription, audioBlob);
+        await handleRecordingComplete(data.transcription);
         
         // Stop all tracks
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
@@ -121,63 +121,41 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
     mediaRecorder.stop();
   };
 
-  const handleRecordingComplete = async (transcription: string, audioBlob: Blob) => {
+  const handleRecordingComplete = async (transcription: string) => {
     try {
       setIsLoading(true);
       console.log('1. Got transcription:', transcription);
 
-      // Run both analyses in parallel
-      const [openAIResult, speechAceResult] = await Promise.all([
-        // OpenAI Analysis
-        (async () => {
-          console.log('2. Starting OpenAI analysis...');
-          const response = await fetch('/api/analyze', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              prompt: transcription,
-              type: 'opinion'
-            })
-          });
-          const data = await response.json();
-          console.log('3. OpenAI analysis complete:', data);
-          return data;
-        })(),
-
-        // SpeechAce Analysis
-        (async () => {
-          console.log('4. Starting SpeechAce analysis...');
-          const formData = new FormData();
-          formData.append('audio', audioBlob);
-          formData.append('text', transcription);
-
-          const response = await fetch('/api/speechace', {
-            method: 'POST',
-            body: formData
-          });
-          const data = await response.json();
-          console.log('5. SpeechAce analysis complete:', data);
-          return data;
-        })().catch(error => {
-          console.error('SpeechAce analysis failed:', error);
-          return null; // Return null if SpeechAce fails
+      // Get OpenAI Analysis
+      const openAIResponse = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: transcription,
+          type: 'opinion'
         })
-      ]);
+      });
 
-      // Update user data with both analyses
+      if (!openAIResponse.ok) {
+        throw new Error('OpenAI analysis failed');
+      }
+
+      const openAIData = await openAIResponse.json();
+      console.log('2. OpenAI analysis data:', openAIData);
+      console.log('3. OpenAI analysis text:', openAIData.analysis);
+
+      // Update user data
       const newData = {
         transcription,
-        analysis: openAIResult.analysis,
-        speechAceAnalysis: speechAceResult,
+        analysis: openAIData.analysis,  // Changed from openAIAnalysis to analysis
         timestamp: new Date().toISOString()
       };
 
-      console.log('OpinionPage - Full speechAceResult:', speechAceResult);
-      console.log('OpinionPage - newData being saved:', newData);
-
+      console.log('4. Updating with data:', newData);
       updateUserData('opinionData', newData);
-      console.log('7. Moving to next page');
-      
+      console.log('5. State updated, moving to next page');
       onNext();
 
     } catch (error) {
@@ -215,12 +193,9 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
                 Time remaining: {timeLeft}s
               </div>
             )}
-            <h3 className="text-2xl font-semibold text-center mb-2 text-gray-800">
+            <h3 className="text-2xl font-semibold text-center mb-8 text-gray-800">
               Question: &apos;What is the most important skill for success in life?&apos;
             </h3>
-            <p className="text-sm text-gray-500 text-center mb-8">
-              Record your answer for 35 to 45 seconds.
-            </p>
             <div className="flex justify-center">
               <button
                 onClick={isRecording ? stopRecording : startRecording}
