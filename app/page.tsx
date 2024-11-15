@@ -10,7 +10,6 @@ import ListeningComprehensionPage from '../components/ListeningComprehensionPage
 import ReadingComprehensionPage from '../components/ReadingComprehensionPage';
 import WritingPage from '../components/WritingPage';
 import ReportPage from '@/components/ReportPage';
-import PersonalizedDashboard from '@/components/PersonalizedDashboard';
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,8 +62,6 @@ export default function Home() {
         return <WritingPage onNext={nextPage} updateUserData={updateUserData} />;
       case 9:
         return <ReportPage userData={userData} onNext={nextPage} />;
-      case 10:
-        return <PersonalizedDashboard userData={userData} />;
       default:
         return <div>Page not found</div>;
     }
