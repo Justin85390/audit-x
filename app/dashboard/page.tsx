@@ -21,3 +21,8 @@ export default function DashboardPage() {
   return <PersonalizedDashboard userData={userData} />;
 }
 */
+
+// Temporary placeholder export
+export default function DashboardPage() {
+  return null;
+}
