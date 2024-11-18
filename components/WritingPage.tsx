@@ -68,89 +68,85 @@ export default function WritingPage({ onNext, updateUserData }: WritingPageProps
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          Can you send me an email please?
-        </h1>
-        
-        <div className="flex flex-col items-center space-y-8">
-          {/* Video Container */}
-          <div className="w-full flex justify-center">
-            <iframe
-              width="560"
-              height="315"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg shadow-lg"
-            />
-          </div>
+    <div className="flex flex-col items-center justify-center space-y-8">
+      <h1 className="text-4xl font-bold text-center">Writing Assessment</h1>
 
-          {/* Form Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-6">
-              Write Sarah an email in the box below.
-            </h2>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="to" className="block text-sm font-medium text-gray-700 mb-1">
-                    To:
-                  </label>
-                  <input
-                    type="text"
-                    name="to"
-                    id="to"
-                    defaultValue="sarah@linguaphone.com"
-                    readOnly
-                    className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
-                    Subject:
-                  </label>
-                  <input
-                    type="text"
-                    name="subject"
-                    id="subject"
-                    defaultValue="Suggestions for your trip to London"
-                    readOnly
-                    className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                    Email:
-                  </label>
-                  <textarea
-                    name="email"
-                    id="email"
-                    rows={10}
-                    placeholder="Write your email here..."
-                    required
-                    className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-center mt-8">
-                <button
-                  type="submit"
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 min-w-[200px]"
-                >
-                  Submit
-                </button>
-              </div>
-            </form>
-          </div>
+      {/* Video Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full flex justify-center">
+          <iframe
+            width="800"
+            height="400"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="Writing Assessment Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
         </div>
+      </div>
+
+      {/* Form Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-xl font-semibold mb-6">
+          Write Sarah an email in the box below.
+        </h2>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="to" className="block text-sm font-medium text-gray-700 mb-1">
+                To:
+              </label>
+              <input
+                type="text"
+                name="to"
+                id="to"
+                defaultValue="sarah@linguaphone.com"
+                readOnly
+                className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                Subject:
+              </label>
+              <input
+                type="text"
+                name="subject"
+                id="subject"
+                defaultValue="Suggestions for your trip to London"
+                readOnly
+                className="w-full p-3 border border-gray-300 rounded-md bg-gray-50"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email:
+              </label>
+              <textarea
+                name="email"
+                id="email"
+                rows={10}
+                placeholder="Write your email here..."
+                required
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-center mt-8">
+            <button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 min-w-[200px]"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

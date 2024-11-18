@@ -15,34 +15,54 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
 
   const questions = [
     {
-      question: "What is one way that traveling can help improve your English?",
+      question: "What is the main purpose of this listening?",
       options: [
-        "You can practice conversations with native speakers",
-        "You can study more grammar rules",
-        "You can read more books in English"
-      ],
-      correctAnswer: 0,  // A is correct (index 0)
-      points: 3
-    },
-    {
-      question: "Why is experiencing the culture important when learning English?",
-      options: [
-        "It helps you understand the language better",
-        "It teaches you how to cook local dishes",
-        "It helps you remember vocabulary lists"
-      ],
-      correctAnswer: 0,  // A is correct (index 0)
-      points: 3.5
-    },
-    {
-      question: "According to the narrator, where can you hear everyday language while traveling?",
-      options: [
-        "In a library",
-        "In museums or local markets",
-        "In a quiet park"
+        "To explain why traveling is expensive",
+        "To show how traveling helps improve English skills",
+        "To compare different English learning methods"
       ],
       correctAnswer: 1,  // B is correct (index 1)
-      points: 3.5
+      points: 2
+    },
+    {
+      question: "What opportunity does traveling to English-speaking countries provide?",
+      options: [
+        "The chance to buy English textbooks",
+        "The opportunity to learn about cooking",
+        "The chance to practice real-life conversations"
+      ],
+      correctAnswer: 2,  // C is correct (index 2)
+      points: 2
+    },
+    {
+      question: "What specific example does Olivia give for experiencing culture?",
+      options: [
+        "Taking language classes",
+        "Visiting museums and local markets",
+        "Watching English movies"
+      ],
+      correctAnswer: 1,  // B is correct (index 1)
+      points: 2
+    },
+    {
+      question: "Why is learning through travel be more effective than textbooks?",
+      options: [
+        "Because travel exposes you to authentic language use in real contexts",
+        "Because textbooks are too expensive",
+        "Because teachers are not helpful"
+      ],
+      correctAnswer: 0,  // A is correct (index 0)
+      points: 2
+    },
+    {
+      question: "What helps you understand the language better?",
+      options: [
+        "Studying grammar rules",
+        "Experiencing the culture",
+        "Reading newspapers"
+      ],
+      correctAnswer: 1,  // B is correct (index 1)
+      points: 2
     }
   ];
 
@@ -67,43 +87,43 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Listening Comprehension</h1>
-        
-        <div className="flex flex-col items-center space-y-8">
-          {/* Video Container */}
-          <div className="w-full flex justify-center">
-            <iframe
-              width="560"
-              height="315"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg shadow-lg"
-            />
-          </div>
-          
-          {/* Question Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-6">
-              {questions[currentQuestion].question}
-            </h3>
-            <div className="space-y-4">
-              {questions[currentQuestion].options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
-                  className="w-full text-left p-4 rounded border hover:bg-gray-50 
-                           transition-colors duration-200 focus:outline-none 
-                           focus:ring-2 focus:ring-blue-500"
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+    <div className="flex flex-col items-center justify-center space-y-8">
+      <h1 className="text-4xl font-bold text-center">Listening Comprehension</h1>
+
+      {/* Video Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full flex justify-center">
+          <iframe
+            width="800"
+            height="400"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="Listening Comprehension Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* Question Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full max-w-2xl mx-auto">
+          <h3 className="text-xl font-semibold mb-6">
+            {questions[currentQuestion].question}
+          </h3>
+          <div className="space-y-4">
+            {questions[currentQuestion].options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(index)}
+                className="w-full text-left p-4 rounded border hover:bg-gray-50 
+                         transition-colors duration-200 focus:outline-none 
+                         focus:ring-2 focus:ring-blue-500"
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </div>
       </div>

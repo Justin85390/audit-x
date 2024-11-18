@@ -17,34 +17,54 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
 
   const questions = [
     {
-      question: "What is a good way to travel quickly around London?",
+      question: "What is the main purpose of this text?",
       options: [
-        "By car",
-        "By bus",
-        "By Underground"
+        "To describe London's history",
+        "To give advice for visiting London",
+        "To compare London with other cities"
       ],
-      correctAnswer: 2, // C is index 2
-      points: 3
+      correctAnswer: 1,  // B is correct (index 1)
+      points: 2
     },
     {
-      question: "Why should you check the weather in London?",
+      question: "According to the text, what is the best way to travel around London?",
       options: [
-        "The weather changes often",
-        "It is always sunny",
-        "It is always raining"
+        "By walking everywhere",
+        "By taking taxis",
+        "By using the Underground"
       ],
-      correctAnswer: 0, // A is index 0
-      points: 3.5
+      correctAnswer: 2,  // C is correct (index 2)
+      points: 2
     },
     {
-      question: "What is a good way to save money on travel fares in London?",
+      question: "What does the text recommend for paying transport fares?",
       options: [
-        "Buy a paper ticket",
-        "Use an Oyster card or contactless bank card",
-        "Pay in cash"
+        "Using cash only",
+        "An Oyster card or contactless bank card",
+        "Buying single tickets each time"
       ],
-      correctAnswer: 1, // B is index 1
-      points: 3.5
+      correctAnswer: 1,  // B is correct (index 1)
+      points: 2
+    },
+    {
+      question: "Why does the text suggest starting your day early?",
+      options: [
+        "Because the weather is better in the morning",
+        "Because the attractions are cheaper",
+        "Because there are fewer people around"
+      ],
+      correctAnswer: 2,  // C is correct (index 2)
+      points: 2
+    },
+    {
+      question: "What specific food recommendation does the text make?",
+      options: [
+        "Fish and chips",
+        "Traditional tea",
+        "Local sandwiches"
+      ],
+      correctAnswer: 0,  // A is correct (index 0)
+      points: 2
     }
   ];
 
@@ -66,51 +86,51 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Travel Tips for London</h1>
-        
-        <div className="flex flex-col items-center space-y-8">
-          {/* Video Container */}
-          <div className="w-full flex justify-center">
-            <iframe
-              width="560"
-              height="315"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg shadow-lg"
-            />
-          </div>
+    <div className="flex flex-col items-center justify-center space-y-8">
+      <h1 className="text-4xl font-bold text-center">Reading Comprehension</h1>
 
-          {/* Reading Text Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Read the following text:</h2>
-            <p className="text-gray-700 leading-relaxed">
-              {readingText}
-            </p>
-          </div>
-          
-          {/* Question Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-6">
-              {questions[currentQuestion].question}
-            </h3>
-            <div className="space-y-4">
-              {questions[currentQuestion].options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSelect(index)}
-                  className="w-full text-left p-4 rounded border hover:bg-gray-50 
-                           transition-colors duration-200 focus:outline-none 
-                           focus:ring-2 focus:ring-blue-500"
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
+      {/* Video Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full flex justify-center">
+          <iframe
+            width="800"
+            height="400"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="Reading Comprehension Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* Reading Text Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">Read the following text:</h2>
+        <p className="text-gray-700 leading-relaxed">
+          {readingText}
+        </p>
+      </div>
+      
+      {/* Question Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full max-w-2xl mx-auto">
+          <h3 className="text-xl font-semibold mb-6">
+            {questions[currentQuestion].question}
+          </h3>
+          <div className="space-y-4">
+            {questions[currentQuestion].options.map((option, index) => (
+              <button
+                key={index}
+                onClick={() => handleAnswerSelect(index)}
+                className="w-full text-left p-4 rounded border hover:bg-gray-50 
+                         transition-colors duration-200 focus:outline-none 
+                         focus:ring-2 focus:ring-blue-500"
+              >
+                {option}
+              </button>
+            ))}
           </div>
         </div>
       </div>

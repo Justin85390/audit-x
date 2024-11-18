@@ -13,19 +13,59 @@ import ReadingComprehensionPage from '@/components/ReadingComprehensionPage';
 import WritingPage from '@/components/WritingPage';
 import ReportPage from '@/components/ReportPage';
 
+interface UserData {
+  contactDetails: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    age: string;
+    company: string;
+    jobTitle: string;
+    address: string;
+  };
+  learnerData: {
+    timeToLearn: string;
+    motivation: string;
+    interests: string;
+    device: string;
+    contentType: string;
+    classroomFormat: string;
+  };
+  speakingData: {
+    transcription: string;
+  };
+  opinionData: {
+    transcription: string;
+    analysis: string;
+  };
+  listeningScore: number;
+  readingScore: number;
+  writingData: {
+    email: string;
+  };
+}
+
 export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<UserData>({
     contactDetails: {
       firstName: '',
       lastName: '',
       email: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      age: '',
+      company: '',
+      jobTitle: '',
+      address: ''
     },
     learnerData: {
       timeToLearn: '',
       motivation: '',
-      interests: ''
+      interests: '',
+      device: '',
+      contentType: '',
+      classroomFormat: ''
     },
     speakingData: {
       transcription: ''
@@ -43,8 +83,13 @@ export default function Home() {
 
   const nextPage = () => setCurrentPage((prev) => prev + 1);
 
-  const updateUserData = (key: string, value: any) => {
-    setUserData((prev) => ({ ...prev, [key]: value }));
+  const updateUserData = (key: string, data: any) => {
+    console.log('Updating user data:', key, data);
+    setUserData(prev => {
+      const newData = { ...prev, [key]: data };
+      console.log('New userData state:', newData);
+      return newData;
+    });
   };
 
   const renderPage = () => {
