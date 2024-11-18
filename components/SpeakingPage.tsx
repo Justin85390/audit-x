@@ -134,31 +134,31 @@ export default function SpeakingPage({ onNext, updateUserData }: SpeakingPagePro
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">
-          {"Let's talk"}
-        </h1>
-        
-        <div className="flex flex-col items-center space-y-8">
-          {/* Video Container */}
-          <div className="w-full flex justify-center">
-            <iframe
-              width="560"
-              height="315"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg shadow-lg"
-            />
-          </div>
+    <div className="flex flex-col items-center justify-center space-y-8">
+      <h1 className="text-4xl font-bold text-center">Let's Talk</h1>
 
-          {/* Form Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
+      {/* Video Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full flex justify-center">
+          <iframe
+            width="800"
+            height="400"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="Speaking Assessment Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* Form Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md mx-auto">
             <h3 className="text-2xl font-semibold text-center mb-2 text-gray-800">
-              What is the most difficult thing about learning English?
+              What do you find most difficult with using English?
             </h3>
             <p className="text-sm text-gray-400 text-center mb-8 italic">
               Common responses: grammar, listening comprehension, pronunciation, writing emails, understanding accents in business meetings

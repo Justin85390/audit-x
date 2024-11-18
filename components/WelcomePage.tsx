@@ -265,37 +265,43 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
     <div className="container mx-auto px-4 py-8 flex flex-col items-center">
       {/* Title Section */}
       <h1 className="text-3xl font-bold mb-4 text-center">Welcome to Linguaphone</h1>
-      <p className="text-lg mb-8 text-center text-gray-600">
-        Your journey starts with just a few questions. Press &quot;Ready&quot; to begin.
-      </p>
-      
-      {/* Centered Image */}
-      <div className="w-full max-w-2xl mb-4 flex justify-center">
-        <Image
-          src="https://justindonlon.com/wp-content/uploads/2024/10/UK-home-page-.png"
-          alt="Image of London Bridge"
-          width={800}
-          height={400}
-          className="rounded-lg w-auto h-auto"
-          priority
-        />
+
+      {/* Video Section - with matching container styling */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div className="w-full flex justify-center mb-6">
+          <iframe
+            width="800"
+            height="400"
+            src="https://www.youtube.com/embed/uGg3a9dhjPM"
+            title="Welcome Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
+        </div>
+        
+        <p className="text-lg mb-4 text-center text-gray-600">
+          Your journey starts with just a few questions. Press &quot;Ready&quot; to begin.
+        </p>
+
+        <div className="flex justify-center">
+          <button 
+            onClick={onNext}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full"
+          >
+            Ready
+          </button>
+        </div>
       </div>
 
-      {/* Ready Button */}
-      <button 
-        onClick={onNext}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full mb-8"
-      >
-        Ready
-      </button>
-
-      {/* Olivia Section - Outer Box */}
+      {/* Olivia Section - Outer Box (already has matching styling) */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
         {/* Olivia Header */}
         <div className="flex items-center mb-6">
           <div className="w-24 flex-shrink-0 mr-6">
             <Image
-              src="/avatar.png"
+              src="/avatarnew.png"
               alt="Olivia Avatar"
               width={96}
               height={96}

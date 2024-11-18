@@ -29,11 +29,18 @@ interface UserData {
     lastName: string;
     email: string;
     phoneNumber: string;
+    age: string;
+    company: string;
+    jobTitle: string;
+    address: string;
   };
   learnerData: {
     timeToLearn: string;
     motivation: string;
     interests: string;
+    device: string;
+    contentType: string;
+    classroomFormat: string;
   };
   speakingData: {
     transcription: string;
@@ -69,12 +76,19 @@ export default function App() {
       firstName: '',
       lastName: '',
       email: '',
-      phoneNumber: ''
+      phoneNumber: '',
+      age: '',
+      company: '',
+      jobTitle: '',
+      address: ''
     },
     learnerData: {
       timeToLearn: '',
       motivation: '',
-      interests: ''
+      interests: '',
+      device: '',
+      contentType: '',
+      classroomFormat: ''
     },
     speakingData: {
       transcription: ''
@@ -115,7 +129,10 @@ export default function App() {
       case 8:
         return <WritingPage onNext={nextPage} updateUserData={updateUserData} />
       case 9:
-        return <ReportPage userData={userData} onNext={nextPage} />
+        return <ReportPage 
+          userData={userData}
+          onNext={nextPage} 
+        />
       default:
         return <div>Page not found</div>
     }

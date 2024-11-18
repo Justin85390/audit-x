@@ -19,7 +19,7 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<Timeout | null>(null);
   const { userData, setUserData } = useContext(UserContext);
-  const videoId = "xIb8oYnc9gA";  // Updated YouTube video ID
+  const videoId = "HmAF6Q9NwTs";  // Changed to the correct video ID
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -189,39 +189,36 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Express an Opinion</h1>
-        
-        <div className="flex flex-col items-center space-y-8">
-          {/* Video Container */}
-          <div className="w-full flex justify-center">
-            <iframe
-              width="560"
-              height="315"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="YouTube video player"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg shadow-lg"
-            />
-          </div>
-          
-          {/* Question and Recording Container */}
-          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-            {isRecording && (
-              <div className="text-center mb-4 text-xl font-semibold">
-                Time remaining: {timeLeft}s
-              </div>
-            )}
+    <div className="flex flex-col items-center justify-center space-y-8">
+      <h1 className="text-4xl font-bold text-center">Express an Opinion</h1>
+      
+      {/* Video Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="w-full flex justify-center">
+          <iframe
+            width="800"
+            height="400"
+            src={`https://www.youtube.com/embed/${videoId}`}
+            title="Opinion Video"
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* Form Container */}
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md mx-auto">
             <h3 className="text-2xl font-semibold text-center mb-2 text-gray-800">
-              Question: &apos;What is the most important skill for success in life?&apos;
+              Do you prefer working at home or at the office? Provide 2 examples.
             </h3>
             <p className="text-sm text-gray-500 text-center mb-8">
               Record your answer for 35 to 45 seconds.
             </p>
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center">
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={isLoading}
@@ -230,19 +227,29 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
                   ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
                   text-white font-bold py-3 px-6 rounded-full transition-colors
                   flex items-center justify-center min-w-[200px]
+                  mb-4
                 `}
               >
                 {isLoading ? 'Processing...' : isRecording ? 'Stop Recording' : 'Record your Answer'}
               </button>
+
+              {/* Timer */}
+              {isRecording && (
+                <div className="text-center mb-4 text-xl font-semibold">
+                  Time remaining: {timeLeft}s
+                </div>
+              )}
+
+              {/* Loading message */}
+              {isLoading && (
+                <p className="text-gray-600 text-center mt-2">
+                  Processing audio... This may take a few moments.
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
-      {isLoading && (
-        <div className="mt-4 text-center text-gray-600">
-          Processing your audio... This may take a few moments.
-        </div>
-      )}
     </div>
   );
 }

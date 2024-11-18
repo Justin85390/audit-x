@@ -4,26 +4,39 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { jsPDF } from "jspdf";
 
 interface ReportPageProps {
   userData: {
-    contactDetails?: {
-      firstName?: string;
-      lastName?: string;
-      email?: string;
-      phoneNumber?: string;
+    contactDetails: {
+      firstName: string;
+      lastName: string;
+      email: string;
+      phoneNumber: string;
+      age: string;
+      address: string;
+      company: string;
+      jobTitle: string;
     };
-    learnerData?: {
-      timeToLearn?: string;
-      motivation?: string;
-      interests?: string;
+    learnerData: {
+      timeToLearn: string;
+      motivation: string;
+      interests: string;
+      otherMotivation?: string;
+      otherInterests?: string;
+      device: string;
+      contentType: string;
+      classroomFormat: string;
     };
     speakingData?: any;
     listeningScore?: number;
     listeningCorrectAnswers?: number;
     readingScore?: number;
     readingCorrectAnswers?: number;
-    writingData?: any;
+    writingData: {
+      email: string;
+      analysis?: string;
+    };
     opinionData?: any;
   };
   onNext: () => void;
@@ -31,31 +44,36 @@ interface ReportPageProps {
 
 export default function ReportPage({ userData, onNext }: ReportPageProps) {
   const router = useRouter();
-  const [formData, setFormData] = useState(userData || null);
+  const [displayData, setDisplayData] = useState(userData);
   const videoId = "kW2NUYoTmEY";
 
-  // Load data when component mounts
   useEffect(() => {
-    const savedData = localStorage.getItem('reportData');
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      setFormData(parsedData);
-      console.log('Loaded data in ReportPage:', parsedData);
-    }
-  }, []);
+    // Try to load data from localStorage
+    const contactDetails = JSON.parse(localStorage.getItem('contactDetails') || '{}');
+    const learnerPreferences = JSON.parse(localStorage.getItem('learnerPreferences') || '{}');
+    const technicalPreferences = JSON.parse(localStorage.getItem('technicalPreferences') || '{}');
 
-  // Add this for debugging
-  useEffect(() => {
-    console.log('Current userData:', userData);
-    console.log('Current formData:', formData);
-  }, [userData, formData]);
+    // Combine the data
+    const combinedData = {
+      ...userData,
+      contactDetails: Object.keys(contactDetails).length > 0 ? contactDetails : userData.contactDetails,
+      learnerData: {
+        ...userData.learnerData,
+        ...learnerPreferences,
+        ...technicalPreferences
+      }
+    };
+
+    console.log('Combined Report Data:', combinedData);
+    setDisplayData(combinedData);
+  }, [userData]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
       // Save data to localStorage
-      localStorage.setItem('reportData', JSON.stringify(formData));
-      console.log('Saved data:', formData); // Debug log
+      localStorage.setItem('reportData', JSON.stringify(displayData));
+      console.log('Saved data:', displayData); // Debug log
       
       // Navigate to dashboard
       router.push('/dashboard');
@@ -72,49 +90,166 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
 
   const handleDownload = () => {
     try {
-      // Convert the report data to a string
-      const reportText = JSON.stringify(formData, null, 2);
+      // Create new PDF document with margins
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20; // 20mm margins
+      const lineHeight = 7;
+      let y = margin;
+
+      // Helper function to add text with wrapping
+      const addWrappedText = (text: string, fontSize: number, isBold: boolean = false) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        
+        // Split long text into lines that fit within margins
+        const lines = doc.splitTextToSize(text, pageWidth - (2 * margin));
+        
+        // Check if we need a new page
+        if (y + (lines.length * lineHeight) > doc.internal.pageSize.height - margin) {
+          doc.addPage();
+          y = margin;
+        }
+        
+        // Add each line
+        lines.forEach(line => {
+          doc.text(line, margin, y);
+          y += lineHeight;
+        });
+        
+        // Add extra space after paragraphs
+        y += 3;
+      };
+
+      // Add title
+      addWrappedText('Language Audit Report', 20, true);
+      y += 5;
+
+      // Add sections
+      addWrappedText('Contact Details', 16, true);
+      addWrappedText(`Name: ${displayData.contactDetails?.firstName || 'N/A'} ${displayData.contactDetails?.lastName || ''}`, 12);
+      addWrappedText(`Email: ${displayData.contactDetails?.email || 'N/A'}`, 12);
+      addWrappedText(`Phone: ${displayData.contactDetails?.phoneNumber || 'N/A'}`, 12);
+      addWrappedText(`Age: ${displayData.contactDetails?.age || 'N/A'}`, 12);
+      addWrappedText(`Company: ${displayData.contactDetails?.company || 'N/A'}`, 12);
+      addWrappedText(`Job Title: ${displayData.contactDetails?.jobTitle || 'N/A'}`, 12);
+      addWrappedText(`Address: ${displayData.contactDetails?.address || 'N/A'}`, 12);
+      y += 5;
+
+      addWrappedText('Learning Profile', 16, true);
+      addWrappedText(`Time Available: ${displayData.learnerData?.timeToLearn || 'N/A'}`, 12);
+      addWrappedText(`Motivation: ${displayData.learnerData?.motivation || 'N/A'}${
+        displayData.learnerData?.motivation === 'other' && displayData.learnerData?.otherMotivation 
+          ? ` - ${displayData.learnerData.otherMotivation}` 
+          : ''
+      }`, 12);
+      addWrappedText(`Interests: ${displayData.learnerData?.interests || 'N/A'}${
+        displayData.learnerData?.interests === 'other' && displayData.learnerData?.otherInterests 
+          ? ` - ${displayData.learnerData.otherInterests}` 
+          : ''
+      }`, 12);
+      y += 5;
+
+      addWrappedText('Technical Preferences', 16, true);
+      addWrappedText(`Preferred Device: ${displayData.learnerData?.device || 'N/A'}`, 12);
+      addWrappedText(`Preferred Content Type: ${displayData.learnerData?.contentType || 'N/A'}`, 12);
+      addWrappedText(`Preferred Class Format: ${displayData.learnerData?.classroomFormat || 'N/A'}`, 12);
+      y += 5;
+
+      addWrappedText('Difficulties to focus on', 16, true);
+      addWrappedText(`Response: ${displayData.speakingData?.transcription || 'N/A'}`, 12);
+      y += 5;
+
+      addWrappedText('Opinion Assessment', 16, true);
+      addWrappedText(`Your Response: ${displayData.opinionData?.transcription || 'No response recorded'}`, 12);
+      addWrappedText(`Analysis: ${displayData.opinionData?.analysis || 'Analysis pending...'}`, 12);
+      y += 5;
+
+      addWrappedText('SpeechAce Analysis', 16, true);
+      addWrappedText(`Pronunciation Score: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100`, 12);
+      addWrappedText(`Fluency Score: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100`, 12);
+      y += 5;
+
+      addWrappedText('IELTS Equivalent', 16, true);
+      addWrappedText(`Pronunciation: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9`, 12);
+      addWrappedText(`Fluency: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9`, 12);
+      y += 5;
+
+      addWrappedText('CEFR Level', 16, true);
+      addWrappedText(`Pronunciation: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}`, 12);
+      addWrappedText(`Fluency: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}`, 12);
+      y += 5;
+
+      addWrappedText('Speech Pattern Analysis', 16, true);
+      addWrappedText(`Speech Rate: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second`, 12);
+      addWrappedText(`Pauses: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses`, 12);
+      addWrappedText(`Average Run Length: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words`, 12);
+      y += 5;
+
+      addWrappedText('Test Scores', 16, true);
+      addWrappedText(`Listening Score: ${displayData?.listeningScore || 0}/10`, 12);
+      addWrappedText(`Reading Score: ${displayData?.readingScore || 0}/10`, 12);
+      y += 5;
+
+      addWrappedText('Writing Assessment', 16, true);
+      addWrappedText(`Email Response: ${displayData.writingData?.email || 'N/A'}`, 12);
       
-      // Create a blob with the data
-      const blob = new Blob([reportText], { type: 'application/json' });
-      
-      // Create a URL for the blob
-      const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary link element
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'language-audit-report.json';
-      
-      // Append link to body, click it, and remove it
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the URL
-      window.URL.revokeObjectURL(url);
+      // Add the OpenAI analysis
+      if (displayData.writingData?.analysis) {
+        y += 5;
+        addWrappedText('AI Analysis:', 14, true);
+        addWrappedText(displayData.writingData.analysis, 12);
+      }
+
+      addWrappedText(`Analysis: ${displayData.writingData?.analysis || 'N/A'}`, 12);
+      y += 5;
+
+      addWrappedText(`Generated on: ${new Date().toLocaleDateString()}`, 12);
+
+      // Save the PDF
+      doc.save('language-audit-report.pdf');
+
     } catch (error) {
       console.error('Error downloading report:', error);
     }
   };
 
+  useEffect(() => {
+    // Debug logs
+    console.log('ReportPage userData:', userData);
+    console.log('Contact Details:', userData.contactDetails);
+    console.log('Learner Data:', userData.learnerData);
+    
+    // Check localStorage directly
+    console.log('localStorage contactDetails:', JSON.parse(localStorage.getItem('contactDetails') || '{}'));
+    console.log('localStorage learnerPreferences:', JSON.parse(localStorage.getItem('learnerPreferences') || '{}'));
+    console.log('localStorage technicalPreferences:', JSON.parse(localStorage.getItem('technicalPreferences') || '{}'));
+  }, [userData]);
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Your Report</h1>
+        <h1 className="text-4xl font-bold text-center mb-8">Your Assessment Report</h1>
 
-        {/* Video Container */}
-        <div className="w-full flex justify-center mb-8">
-          <iframe
-            width="560"
-            height="315"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="YouTube video player"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="rounded-lg shadow-lg"
-          />
+        {/* Video Container - Centered */}
+        <div className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div 
+            className="w-full flex justify-center"
+            role="region"
+            aria-label="Assessment Report Video"
+          >
+            <iframe
+              width="800"
+              height="400"
+              src={`https://www.youtube.com/embed/${videoId}`}
+              title="Assessment Report Video"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="rounded-lg"
+              tabIndex={0}
+            />
+          </div>
         </div>
 
         {/* Main Report Container */}
@@ -123,9 +258,15 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
           <div className="mb-8 border-b pb-6">
             <h2 className="text-2xl font-semibold mb-4">Contact Details</h2>
             <div className="grid grid-cols-2 gap-4">
-              <p><strong>Name:</strong> {userData.contactDetails?.firstName || 'N/A'} {userData.contactDetails?.lastName || ''}</p>
-              <p><strong>Email:</strong> {userData.contactDetails?.email || 'N/A'}</p>
-              <p><strong>Phone:</strong> {userData.contactDetails?.phoneNumber || 'N/A'}</p>
+              <p><strong>Name:</strong> {displayData.contactDetails?.firstName || 'N/A'} {displayData.contactDetails?.lastName || ''}</p>
+              <p><strong>Email:</strong> {displayData.contactDetails?.email || 'N/A'}</p>
+              <p><strong>Phone:</strong> {displayData.contactDetails?.phoneNumber || 'N/A'}</p>
+              <p><strong>Age:</strong> {displayData.contactDetails?.age || 'N/A'}</p>
+              <p><strong>Company:</strong> {displayData.contactDetails?.company || 'N/A'}</p>
+              <p><strong>Job Title:</strong> {displayData.contactDetails?.jobTitle || 'N/A'}</p>
+            </div>
+            <div className="mt-4">
+              <p><strong>Address:</strong> {displayData.contactDetails?.address || 'N/A'}</p>
             </div>
           </div>
 
@@ -133,9 +274,29 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
           <div className="mb-8 border-b pb-6">
             <h2 className="text-2xl font-semibold mb-4">Learning Profile</h2>
             <div className="space-y-2">
-              <p><strong>Time Available:</strong> {userData.learnerData?.timeToLearn || 'N/A'}</p>
-              <p><strong>Motivation:</strong> {userData.learnerData?.motivation || 'N/A'}</p>
-              <p><strong>Interests:</strong> {userData.learnerData?.interests || 'N/A'}</p>
+              <p><strong>Time Available:</strong> {displayData.learnerData?.timeToLearn || 'N/A'}</p>
+              <p>
+                <strong>Motivation:</strong> {displayData.learnerData?.motivation || 'N/A'}
+                {displayData.learnerData?.motivation === 'other' && displayData.learnerData?.otherMotivation && (
+                  <span className="ml-2">- {displayData.learnerData.otherMotivation}</span>
+                )}
+              </p>
+              <p>
+                <strong>Interests:</strong> {displayData.learnerData?.interests || 'N/A'}
+                {displayData.learnerData?.interests === 'other' && displayData.learnerData?.otherInterests && (
+                  <span className="ml-2">- {displayData.learnerData.otherInterests}</span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Technical Preferences Section */}
+          <div className="mb-8 border-b pb-6">
+            <h2 className="text-2xl font-semibold mb-4">Technical Preferences</h2>
+            <div className="space-y-2">
+              <p><strong>Preferred Device:</strong> {displayData.learnerData?.device || 'N/A'}</p>
+              <p><strong>Preferred Content Type:</strong> {displayData.learnerData?.contentType || 'N/A'}</p>
+              <p><strong>Preferred Class Format:</strong> {displayData.learnerData?.classroomFormat || 'N/A'}</p>
             </div>
           </div>
 
@@ -145,7 +306,7 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-medium mb-2">Your Response:</h3>
-                <p className="bg-gray-50 p-4 rounded">{userData.speakingData?.transcription || 'N/A'}</p>
+                <p className="bg-gray-50 p-4 rounded">{displayData.speakingData?.transcription || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -156,13 +317,13 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
             
             <div className="bg-white shadow rounded-lg p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">Your Response:</h2>
-              <p className="text-gray-700 mb-4">{userData.opinionData?.transcription || 'No response recorded'}</p>
+              <p className="text-gray-700 mb-4">{displayData.opinionData?.transcription || 'No response recorded'}</p>
             </div>
 
             <div className="bg-white shadow rounded-lg p-6 mb-6">
               <h2 className="text-xl font-semibold mb-4">OpenAI Analysis:</h2>
               <p className="text-gray-700 whitespace-pre-line">
-                {userData.opinionData?.analysis || 'Analysis pending...'}
+                {displayData.opinionData?.analysis || 'Analysis pending...'}
               </p>
             </div>
           </div>
@@ -171,16 +332,16 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
           <div className="bg-white shadow rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold mb-4">SpeechAce Analysis:</h2>
             
-            {userData?.opinionData?.speechAceAnalysis?.analysis && (
+            {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation && (
               <div className="space-y-6">
                 {/* Original Text */}
                 <div>
                   <h3 className="font-medium mb-2">Your Transcript</h3>
                   <p className="p-4 bg-gray-50 rounded">
-                    {userData.opinionData.transcription || 'No text available'}
+                    {displayData.opinionData.transcription || 'No text available'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
-                    Word count: {userData.opinionData.transcription?.split(/\s+/).filter(word => word.length > 0).length || 0} words
+                    Word count: {displayData.opinionData.transcription?.split(/\s+/).filter(word => word.length > 0).length || 0} words
                   </p>
                 </div>
 
@@ -188,11 +349,11 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   {/* SpeechAce Scores */}
                   <div className={`p-4 border rounded shadow ${
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90 &&
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90 &&
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
                       ? 'bg-green-50'
-                      : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80 &&
-                        (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
+                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80 &&
+                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
                       ? 'bg-yellow-50'
                       : 'bg-red-50'
                   }`}>
@@ -200,24 +361,24 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="space-y-2">
                       <p>Pronunciation: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100
                         </span>
                       </p>
                       <p>Fluency: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100
                         </span>
                       </p>
                     </div>
@@ -225,11 +386,11 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
 
                   {/* IELTS Scores */}
                   <div className={`p-4 border rounded shadow ${
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8 &&
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8 &&
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
                       ? 'bg-green-50'
-                      : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5 &&
-                        (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
+                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5 &&
+                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
                       ? 'bg-yellow-50'
                       : 'bg-red-50'
                   }`}>
@@ -237,24 +398,24 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="space-y-2">
                       <p>Pronunciation: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9
                         </span>
                       </p>
                       <p>Fluency: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9
                         </span>
                       </p>
                     </div>
@@ -262,11 +423,11 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
 
                   {/* TOEIC Scores */}
                   <div className={`p-4 border rounded shadow ${
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180 &&
-                    (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180 &&
+                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
                       ? 'bg-green-50'
-                      : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150 &&
-                        (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
+                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150 &&
+                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
                       ? 'bg-yellow-50'
                       : 'bg-red-50'
                   }`}>
@@ -274,24 +435,24 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="space-y-2">
                       <p>Pronunciation: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 'N/A'}/200
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 'N/A'}/200
                         </span>
                       </p>
                       <p>Fluency: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
+                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
                             ? 'bg-green-100 text-green-800'
-                            : (userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
+                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 'N/A'}/200
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 'N/A'}/200
                         </span>
                       </p>
                     </div>
@@ -299,11 +460,11 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
 
                   {/* CEFR Level */}
                   <div className={`p-4 border rounded shadow ${
-                    userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C') &&
-                    userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
+                    displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C') &&
+                    displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
                       ? 'bg-green-50'
-                      : userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B') &&
-                        userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
+                      : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B') &&
+                        displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
                       ? 'bg-yellow-50'
                       : 'bg-red-50'
                   }`}>
@@ -311,24 +472,24 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="space-y-2">
                       <p>Pronunciation: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C')
+                          displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C')
                             ? 'bg-green-100 text-green-800'
-                            : userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B')
+                            : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B')
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}
                         </span>
                       </p>
                       <p>Fluency: 
                         <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
+                          displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
                             ? 'bg-green-100 text-green-800'
-                            : userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
+                            : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
                             ? 'bg-yellow-100 text-yellow-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                          {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}
+                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}
                         </span>
                       </p>
                     </div>
@@ -340,9 +501,9 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                   <h3 className="font-medium mb-4">Speech Pattern Analysis</h3>
                   <div className="bg-gray-50 p-4 rounded">
                     <div className="space-y-3">
-                      <p><strong>Speech Rate:</strong> {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second</p>
-                      <p><strong>Pauses:</strong> {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses</p>
-                      <p><strong>Average Run Length:</strong> {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words</p>
+                      <p><strong>Speech Rate:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second</p>
+                      <p><strong>Pauses:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses</p>
+                      <p><strong>Average Run Length:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words</p>
                     </div>
                   </div>
                 </div>
@@ -356,10 +517,10 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="bg-blue-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-blue-800 mb-2">Overall Word Accuracy</h4>
                       <div className="text-2xl font-bold text-blue-900">
-                        {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ? `${(userData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
+                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
+                          ? `${(displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
                               .filter(word => word.quality_score >= 90).length /
-                              userData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length * 100
+                              displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length * 100
                             ).toFixed(1)}%`
                           : 'N/A'
                         }
@@ -370,7 +531,7 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="bg-yellow-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-yellow-800 mb-2">Words Needing Attention</h4>
                       <div className="text-2xl font-bold text-yellow-900">
-                        {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
+                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
                           ?.filter(word => word.quality_score < 90).length || 0}
                       </div>
                       <p className="text-sm text-yellow-600 mt-1">Words below 90% accuracy</p>
@@ -379,10 +540,10 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                     <div className="bg-green-50 p-4 rounded-lg">
                       <h4 className="text-sm font-medium text-green-800 mb-2">Average Word Score</h4>
                       <div className="text-2xl font-bold text-green-900">
-                        {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ? `${(userData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
+                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
+                          ? `${(displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
                               .reduce((acc, word) => acc + word.quality_score, 0) /
-                              userData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length
+                              displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length
                             ).toFixed(1)}/100`
                           : 'N/A'
                         }
@@ -408,7 +569,7 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {userData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
+                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
                           ?.filter(word => word.quality_score < 90)
                           .map((word, index) => (
                             <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
@@ -451,15 +612,15 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
           {/* Listening Comprehension Section */}
           <div className="mb-8 border-b pb-6">
             <h2 className="text-2xl font-semibold mb-4">Listening Comprehension</h2>
-            <p className="mb-2">You answered {userData?.listeningCorrectAnswers || 0} questions correctly</p>
-            <p className="text-lg font-medium">Score: {userData?.listeningScore || 0}/10</p>
+            <p className="mb-2">You answered {displayData?.listeningCorrectAnswers || 0} questions correctly</p>
+            <p className="text-lg font-medium">Score: {displayData?.listeningScore || 0}/10</p>
           </div>
 
           {/* Reading Comprehension Section */}
           <div className="mb-8 border-b pb-6">
             <h2 className="text-2xl font-semibold mb-4">Reading Comprehension</h2>
-            <p className="mb-2">You answered {userData?.readingCorrectAnswers || 0} questions correctly</p>
-            <p className="text-lg font-medium">Score: {userData?.readingScore || 0}/10</p>
+            <p className="mb-2">You answered {displayData?.readingCorrectAnswers || 0} questions correctly</p>
+            <p className="text-lg font-medium">Score: {displayData?.readingScore || 0}/10</p>
           </div>
 
           {/* Writing Assessment Section */}
@@ -468,12 +629,12 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
             <div className="space-y-4">
               <div>
                 <h3 className="text-lg font-medium mb-2">Your Email:</h3>
-                <p className="bg-gray-50 p-4 rounded whitespace-pre-wrap">{userData.writingData?.email || 'N/A'}</p>
+                <p className="bg-gray-50 p-4 rounded whitespace-pre-wrap">{displayData.writingData?.email || 'N/A'}</p>
               </div>
-              {userData.writingData?.analysis && (
+              {displayData.writingData?.analysis && (
                 <div>
                   <h3 className="text-lg font-medium mb-2">Analysis:</h3>
-                  <p className="bg-gray-50 p-4 rounded">{userData.writingData.analysis}</p>
+                  <p className="bg-gray-50 p-4 rounded">{displayData.writingData.analysis}</p>
                 </div>
               )}
             </div>
