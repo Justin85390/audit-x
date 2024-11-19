@@ -1,10 +1,8 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
-
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { jsPDF } from "jspdf";
+import jsPDF from 'jspdf';
 
 interface ReportPageProps {
   userData: {
