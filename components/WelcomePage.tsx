@@ -311,7 +311,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
           </div>
           <div>
             <h2 className="text-2xl font-bold">Olivia</h2>
-            <h3 className="text-xl text-gray-600">Your Learning Assistant</h3>
+            <h3 className="text-xl text-gray-600">Your Audit Assistant</h3>
             <h4 className="text-sm text-gray-500 mt-2">
               Type in the box below or ask me a question with "Ask Olivia"
             </h4>

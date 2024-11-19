@@ -115,7 +115,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
           <iframe
             width="800"
             height="400"
-            src="https://www.youtube.com/embed/lnjfpj60-r8"
+            src="https://www.youtube.com/embed/rbpcbMMdbyo"
             title="Contact Details Video"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
