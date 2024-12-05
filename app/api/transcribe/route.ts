@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { OLIVIA_BASE } from '../../lib/olivia-instructions';
+import { OLIVER_BASE, OLIVER_SPEAKING_ASSESSMENT } from '../../lib/oliver-instructions';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -21,16 +21,42 @@ export async function POST(request: Request) {
       const getInstructions = (pageType: string) => {
         switch(pageType) {
           case 'teaching':
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
           case 'conversation':
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
+          case 'speaking':
+            return OLIVER_SPEAKING_ASSESSMENT.instructions;
           default:
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
         }
       };
 
-      const instructions = getInstructions(request.headers.get('x-page-type') || 'default');
+      const pageType = request.headers.get('x-page-type') || 'default';
+      const instructions = getInstructions(pageType);
 
+      // Special handling for speaking assessment
+      if (pageType === 'speaking' && body.forceResponse) {
+        const responseText = body.forceResponse;
+
+        // Generate speech from the exact response text
+        const speechResponse = await openai.audio.speech.create({
+          model: "tts-1",
+          voice: "onyx",
+          input: responseText,
+        });
+
+        // Convert the audio to base64
+        const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
+        const audioBase64 = audioBuffer.toString('base64');
+        const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
+
+        return NextResponse.json({
+          response: responseText,
+          audioUrl: audioUrl
+        });
+      }
+
+      // Existing chat logic for other page types
       const chatResponse = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
@@ -44,7 +70,7 @@ export async function POST(request: Request) {
       // Generate speech from the response
       const speechResponse = await openai.audio.speech.create({
         model: "tts-1",
-        voice: "alloy",
+        voice: "onyx",
         input: responseText,
       });
 
@@ -109,11 +135,13 @@ export async function POST(request: Request) {
       const getInstructions = (pageType: string) => {
         switch(pageType) {
           case 'teaching':
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
           case 'conversation':
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
+          case 'speaking':
+            return OLIVER_SPEAKING_ASSESSMENT.instructions;
           default:
-            return OLIVIA_BASE;
+            return OLIVER_BASE;
         }
       };
 
@@ -132,7 +160,7 @@ export async function POST(request: Request) {
       // Generate speech from the response
       const speechResponse = await openai.audio.speech.create({
         model: "tts-1",
-        voice: "alloy",
+        voice: "onyx",
         input: responseText,
       });
 

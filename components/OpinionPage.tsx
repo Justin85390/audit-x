@@ -19,8 +19,8 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<Timeout | null>(null);
   const { userData, setUserData } = useContext(UserContext);
-  const videoId = "HmAF6Q9NwTs";  // Changed to the correct video ID
   const [isLoading, setIsLoading] = useState(false);
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -188,23 +188,37 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
     }
   };
 
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
-      <h1 className="text-4xl font-bold text-center">Express an Opinion</h1>
+      <h1 className="text-4xl font-bold text-center">Your Opinion</h1>
       
       {/* Video Container */}
-      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
-        <div className="w-full flex justify-center">
-          <iframe
-            width="800"
-            height="400"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="Opinion Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+      <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div className="w-full flex flex-col items-center">
+          <video
+            ref={(el) => setVideoRef(el)}
+            src="https://justindonlon.com/wp-content/uploads/2024/11/OpinionPage.mp4"
+            controls
+            playsInline
             className="rounded-lg"
-          />
+            width="100%"
+          >
+            Your browser does not support the video tag.
+          </video>
+          
+          <button 
+            onClick={handlePlayVideo}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+          >
+            <span>▶️</span> Play Video
+          </button>
         </div>
       </div>
 

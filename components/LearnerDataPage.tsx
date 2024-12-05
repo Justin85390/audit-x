@@ -14,14 +14,15 @@ export default function LearnerDataPage({
   const [currentForm, setCurrentForm] = useState<1 | 2>(1);
   const [formData, setFormData] = useState({
     timeToLearn: "",
-    motivation: "",
+    motivation: [] as string[],
     otherMotivation: "",
-    interests: "",
+    interests: [] as string[],
     otherInterests: "",
-    device: "",
-    contentType: "",
-    classroomFormat: ""
+    device: [] as string[],
+    contentType: [] as string[],
+    classroomFormat: [] as string[]
   });
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -62,6 +63,13 @@ export default function LearnerDataPage({
     
     console.log('Learner Data saved:', combinedData);
     onNext();
+  };
+
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
   };
 
   const textareaStyles = "border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
@@ -119,21 +127,28 @@ export default function LearnerDataPage({
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
-      <h1 className="text-4xl font-bold text-center">Learning Preferences</h1>
+      <h1 className="text-4xl font-bold text-center">Learner Data</h1>
 
       {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="w-full flex justify-center">
-          <iframe
-            width="800"
-            height="400"
-            src="https://www.youtube.com/embed/lnjfpj60-r8"
-            title="Learner Data Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+        <div className="w-full flex flex-col items-center">
+          <video
+            ref={(el) => setVideoRef(el)}
+            src="https://justindonlon.com/wp-content/uploads/2024/11/Learnerdata.mp4"
+            controls
+            playsInline
             className="rounded-lg"
-          />
+            width="100%"
+          >
+            Your browser does not support the video tag.
+          </video>
+          
+          <button 
+            onClick={handlePlayVideo}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+          >
+            <span>▶️</span> Play Video
+          </button>
         </div>
       </div>
 
@@ -163,15 +178,35 @@ export default function LearnerDataPage({
                 Qu&apos;est-ce qui vous motive à améliorer votre anglais ?
               </p>
             </Label>
-            <SelectWrapper
-              options={motivationOptions}
-              value={formData.motivation}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, motivation: value }))}
-              placeholder="Select motivation"
-              prefix="motivation"
-            />
+            
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              {motivationOptions.map((option) => (
+                <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    id={`motivation-${option.id}`}
+                    checked={formData.motivation.includes(option.value)}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        motivation: e.target.checked 
+                          ? [...prev.motivation, option.value]
+                          : prev.motivation.filter(m => m !== option.value)
+                      }));
+                    }}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <label 
+                    htmlFor={`motivation-${option.id}`}
+                    className="text-sm font-medium text-gray-700 cursor-pointer"
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))}
+            </div>
 
-            {formData.motivation === "other" && (
+            {formData.motivation.includes("other") && (
               <div className="mt-4">
                 <Label htmlFor="otherMotivation">
                   Please specify your motivation:
@@ -195,15 +230,35 @@ export default function LearnerDataPage({
                 Quels sujets vous intéressent le plus ?
               </p>
             </Label>
-            <SelectWrapper
-              options={interestsOptions}
-              value={formData.interests}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, interests: value }))}
-              placeholder="Select interests"
-              prefix="interests"
-            />
+            
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              {interestsOptions.map((option) => (
+                <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    id={`interests-${option.id}`}
+                    checked={formData.interests.includes(option.value)}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        interests: e.target.checked 
+                          ? [...prev.interests, option.value]
+                          : prev.interests.filter(i => i !== option.value)
+                      }));
+                    }}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                  <label 
+                    htmlFor={`interests-${option.id}`}
+                    className="text-sm font-medium text-gray-700 cursor-pointer"
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))}
+            </div>
 
-            {formData.interests === "other" && (
+            {formData.interests.includes("other") && (
               <div className="mt-4">
                 <Label htmlFor="otherInterests">
                   Please specify your interests:
@@ -232,6 +287,7 @@ export default function LearnerDataPage({
       ) : (
         <form onSubmit={handleSecondFormSubmit} className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
           <div className="space-y-6">
+            {/* Device Preferences */}
             <div>
               <Label htmlFor="device">
                 What device do you prefer for e-learning?
@@ -239,15 +295,35 @@ export default function LearnerDataPage({
                   Quel appareil préférez-vous pour l&apos;apprentissage en ligne ?
                 </p>
               </Label>
-              <SelectWrapper
-                options={deviceOptions}
-                value={formData.device}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, device: value }))}
-                placeholder="Select device"
-                prefix="device"
-              />
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                {deviceOptions.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      id={`device-${option.id}`}
+                      checked={formData.device.includes(option.value)}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          device: e.target.checked 
+                            ? [...prev.device, option.value]
+                            : prev.device.filter(d => d !== option.value)
+                        }));
+                      }}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <label 
+                      htmlFor={`device-${option.id}`}
+                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                    >
+                      {option.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
 
+            {/* Content Type Preferences */}
             <div>
               <Label htmlFor="contentType">
                 What type of content do you prefer?
@@ -255,15 +331,35 @@ export default function LearnerDataPage({
                   Quel type de contenu préférez-vous ?
                 </p>
               </Label>
-              <SelectWrapper
-                options={contentTypeOptions}
-                value={formData.contentType}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, contentType: value }))}
-                placeholder="Select content type"
-                prefix="content"
-              />
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                {contentTypeOptions.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      id={`content-${option.id}`}
+                      checked={formData.contentType.includes(option.value)}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          contentType: e.target.checked 
+                            ? [...prev.contentType, option.value]
+                            : prev.contentType.filter(c => c !== option.value)
+                        }));
+                      }}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <label 
+                      htmlFor={`content-${option.id}`}
+                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                    >
+                      {option.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
 
+            {/* Classroom Format Preferences */}
             <div>
               <Label htmlFor="classroomFormat">
                 Which of the following classroom formats do you prefer?
@@ -271,13 +367,32 @@ export default function LearnerDataPage({
                   Quel format de classe préférez-vous ?
                 </p>
               </Label>
-              <SelectWrapper
-                options={classroomFormatOptions}
-                value={formData.classroomFormat}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, classroomFormat: value }))}
-                placeholder="Select format"
-                prefix="format"
-              />
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                {classroomFormatOptions.map((option) => (
+                  <div key={option.id} className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      id={`format-${option.id}`}
+                      checked={formData.classroomFormat.includes(option.value)}
+                      onChange={(e) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          classroomFormat: e.target.checked 
+                            ? [...prev.classroomFormat, option.value]
+                            : prev.classroomFormat.filter(f => f !== option.value)
+                        }));
+                      }}
+                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <label 
+                      htmlFor={`format-${option.id}`}
+                      className="text-sm font-medium text-gray-700 cursor-pointer"
+                    >
+                      {option.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
