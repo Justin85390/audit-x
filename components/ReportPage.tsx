@@ -207,14 +207,14 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
       addWrappedText('2. Ability to Communicate:', 12, true);
       addWrappedText(abilityToCommunicate, 12);
 
-      const cefrLevel = analysis.includes('3. CEFR Level:')
-        ? analysis.split('3. CEFR Level:')[1].split('4.')[0].trim()
+      const cefrLevel = analysis.includes('3. CEFR level:')
+        ? analysis.split('3. CEFR level:')[1].split('4.')[0].trim()
         : 'No data available';
       addWrappedText('3. CEFR Level:', 12, true);
       addWrappedText(cefrLevel, 12);
 
-      const keyStrengths = analysis.includes('4. Key Strengths and Areas for Improvement:')
-        ? analysis.split('4. Key Strengths and Areas for Improvement:')[1].trim()
+      const keyStrengths = analysis.includes('4. Key strengths')
+        ? analysis.split('4. Key strengths')[1].trim()
         : 'No data available';
       addWrappedText('4. Key Strengths and Areas for Improvement:', 12, true);
       addWrappedText(keyStrengths, 12);
@@ -578,16 +578,16 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
                   <li>
                     <strong>CEFR Level:</strong>
                     <p className="text-gray-700 mt-1">
-                      {displayData.opinionData.analysis.includes('3. CEFR Level:')
-                        ? displayData.opinionData.analysis.split('3. CEFR Level:')[1].split('4.')[0].trim()
+                      {displayData.opinionData.analysis.includes('3. CEFR level:')
+                        ? displayData.opinionData.analysis.split('3. CEFR level:')[1].split('4.')[0].trim()
                         : 'No data available'}
                     </p>
                   </li>
                   <li>
                     <strong>Key Strengths and Areas for Improvement:</strong>
                     <p className="text-gray-700 mt-1">
-                      {displayData.opinionData.analysis.includes('4. Key Strengths and Areas for Improvement:')
-                        ? displayData.opinionData.analysis.split('4. Key Strengths and Areas for Improvement:')[1].trim()
+                      {displayData.opinionData.analysis.includes('4. Key strengths')
+                        ? displayData.opinionData.analysis.split('4. Key strengths')[1].trim()
                         : 'No data available'}
                     </p>
                   </li>
