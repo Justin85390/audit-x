@@ -12,6 +12,7 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const videoId = "fIPPqgLpe0M";
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   const readingText = `London is a big and exciting city with many famous places to see. To enjoy your visit, plan your day carefully. Use the Underground (the "Tube") to travel quickly around the city. It is a good idea to buy an Oyster card or use a contactless bank card for cheaper fares. Remember, London can be busy, so start your day early to avoid crowds. Always check the weather because it can change often, and carry a small umbrella just in case. Lastly, try some local food like fish and chips to make your trip special!`;
 
@@ -85,23 +86,38 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
     }
   };
 
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
       <h1 className="text-4xl font-bold text-center">Reading Comprehension</h1>
 
       {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
-        <div className="w-full flex justify-center">
-          <iframe
+        <div className="w-full flex flex-col items-center">
+          <video
+            ref={(el) => setVideoRef(el)}
+            src="https://justindonlon.com/wp-content/uploads/2024/11/Readingpage.mp4"
+            controls
+            playsInline
+            className="rounded-lg"
             width="800"
             height="400"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="Reading Comprehension Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="rounded-lg"
-          />
+          >
+            Your browser does not support the video tag.
+          </video>
+          
+          <button 
+            onClick={handlePlayVideo}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+          >
+            <span>▶️</span> Play Video
+          </button>
         </div>
       </div>
 

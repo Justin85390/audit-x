@@ -1,5 +1,7 @@
 'use client';
 
+import React, { useState } from 'react';
+
 interface WritingPageProps {
   onNext: () => void;
   updateUserData: (key: string, value: any) => void;
@@ -7,6 +9,7 @@ interface WritingPageProps {
 
 export default function WritingPage({ onNext, updateUserData }: WritingPageProps) {
   const videoId = "EHu1ROsxvwc";
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   const analyzeEmail = async (emailText: string) => {
     try {
@@ -67,23 +70,38 @@ export default function WritingPage({ onNext, updateUserData }: WritingPageProps
     }
   };
 
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
       <h1 className="text-4xl font-bold text-center">Writing Assessment</h1>
 
       {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
-        <div className="w-full flex justify-center">
-          <iframe
+        <div className="w-full flex flex-col items-center">
+          <video
+            ref={(el) => setVideoRef(el)}
+            src="https://justindonlon.com/wp-content/uploads/2024/11/WritingPage.mp4"
+            controls
+            playsInline
+            className="rounded-lg"
             width="800"
             height="400"
-            src={`https://www.youtube.com/embed/${videoId}`}
-            title="Writing Assessment Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="rounded-lg"
-          />
+          >
+            Your browser does not support the video tag.
+          </video>
+          
+          <button 
+            onClick={handlePlayVideo}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+          >
+            <span>▶️</span> Play Video
+          </button>
         </div>
       </div>
 

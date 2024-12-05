@@ -8,7 +8,7 @@ interface WelcomePageProps {
 
 const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [oliviaResponse, setOliviaResponse] = useState<string>('');
+  const [oliverResponse, setOliverResponse] = useState<string>('');
   const [userTranscript, setUserTranscript] = useState<string>('');
   const [userQuestion, setUserQuestion] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -17,12 +17,13 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
   const [transcription, setTranscription] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [languageIndex, setLanguageIndex] = useState(0);
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   const translations = [
-    { text: "Olivia speaks many languages. Ask her in your language", lang: "en" },
-    { text: "Olivia habla varios idiomas. Pregúntale en tu idioma", lang: "es" },
-    { text: "Olivia parle plusieurs langues. Posez-lui des questions dans votre langue", lang: "fr" },
-    { text: "Olivia spricht viele Sprachen. Fragen Sie sie in Ihrer Sprache", lang: "de" }
+    { text: "Oliver speaks many languages. Ask him in your language", lang: "en" },
+    { text: "Oliver habla varios idiomas. Pregúntale en tu idioma", lang: "es" },
+    { text: "Oliver parle plusieurs langues. Posez-lui des questions dans votre langue", lang: "fr" },
+    { text: "Oliver spricht viele Sprachen. Fragen Sie ihn in Ihrer Sprache", lang: "de" }
   ];
 
   useEffect(() => {
@@ -34,7 +35,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
   }, []);
 
   const startRecording = async () => {
-    console.log("Starting recording for Olivia...");
+    console.log("Starting recording for Oliver...");
     if (mediaRecorderRef.current?.state === "recording") {
       console.error("Another recording is already in progress.");
       return;
@@ -56,12 +57,12 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
       };
 
       mediaRecorder.onstop = async () => {
-        console.log("Stopping recording for Olivia...");
+        console.log("Stopping recording for Oliver...");
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         setIsRecording(false);
 
         // Send audioBlob to Google Cloud API for transcription
-        await sendToGoogleCloudOlivia(audioBlob);
+        await sendToGoogleCloudOliver(audioBlob);
       };
 
       mediaRecorder.start();
@@ -77,73 +78,73 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
     if (isRecording && mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop();
     } else {
-      console.error("No active Olivia recording found to stop.");
-      alert('No active Olivia recording found to stop.');
+      console.error("No active Oliver recording found to stop.");
+      alert('No active Oliver recording found to stop.');
     }
   };
 
   const handleToggleRecording = async () => {
-    console.log("toggleRecordingOlivia function called");
-    if (isRecording) {
-      stopRecording();
-    } else {
-      await startRecording();
+    console.log("toggleRecordingOliver function called");
+    try {
+      if (isRecording) {
+        setIsLoading(true);
+        stopRecording();
+      } else {
+        await startRecording();
+      }
+    } catch (error) {
+      console.error('Recording error:', error);
+      setIsLoading(false);
     }
   };
 
-  const sendToGoogleCloudOlivia = async (audioBlob: Blob) => {
+  const sendToGoogleCloudOliver = async (audioBlob: Blob) => {
     try {
       setIsLoading(true);
-      console.log('Sending audio to server...');
-
-      // Convert audio blob to base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64Audio = reader.result?.toString();
-          resolve(base64Audio || '');
-        };
+      // Convert Blob to base64
+      const base64Data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
         reader.readAsDataURL(audioBlob);
       });
 
-      const base64Audio = await base64Promise;
-      
+      console.log("Audio data type:", typeof base64Data);
+
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-page-type': 'welcome'
         },
         body: JSON.stringify({
-          audio: base64Audio
+          audio: base64Data || ''
         })
       });
 
+      console.log("Response status:", response.status);
+      
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        console.error("API Error details:", errorData);
+        throw new Error(`Server error: ${response.status} - ${JSON.stringify(errorData)}`);
       }
 
       const data = await response.json();
-      console.log('Response from server:', data);
-
-      if (data.transcription) {
-        setTranscription(data.transcription);
-      }
+      console.log("Transcription result:", data);
+      
       if (data.response) {
-        setOliviaResponse(data.response);
-      }
-      if (data.audioUrl) {
-        const audio = new Audio(data.audioUrl);
-        try {
+        setOliverResponse(data.response);
+        
+        // Play audio if available
+        if (data.audioUrl) {
+          const audio = new Audio(data.audioUrl);
           await audio.play();
-        } catch (playError) {
-          console.error('Error playing audio:', playError);
         }
       }
 
+      return data.transcription;
     } catch (error) {
-      console.error('Detailed error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to process audio');
+      console.error('Detailed transcription error:', error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +174,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
       }
 
       console.log("Server response:", data);
-      setOliviaResponse(data.response);
+      setOliverResponse(data.response);
 
       // Play audio if available
       if (data.audioUrl) {
@@ -186,7 +187,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
 
     } catch (error) {
       console.error('Error sending typed question:', error);
-      setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -215,14 +216,14 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
         throw new Error(data.error || 'Failed to process question');
       }
 
-      setOliviaResponse(data.response);
+      setOliverResponse(data.response);
       if (data.audioUrl) {
         const audio = new Audio(data.audioUrl);
         await audio.play();
       }
     } catch (error) {
       console.error('Error:', error);
-      setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setIsLoading(false);
       setUserQuestion('');
@@ -248,7 +249,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
       }
 
       const data = await response.json();
-      setOliviaResponse(data.response);
+      setOliverResponse(data.response);
 
       // Play audio if available
       if (data.audioUrl) {
@@ -257,7 +258,13 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
       }
     } catch (error) {
       console.error('OpenAI error:', error);
-      setOliviaResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+    }
+  };
+
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.play();
     }
   };
 
@@ -269,17 +276,25 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
       {/* Video Section - with matching container styling */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
         <div className="w-full flex justify-center mb-6">
-          <iframe
+          <video 
+            ref={(el) => setVideoRef(el)}
             width="800"
             height="400"
-            src="https://www.youtube.com/embed/uGg3a9dhjPM"
-            title="Welcome Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+            controls
+            playsInline
             className="rounded-lg"
-          />
+          >
+            <source src="https://justindonlon.com/wp-content/uploads/2024/11/Welcome-Page.mp4" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
         </div>
+        
+        <button 
+          onClick={handlePlayVideo}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mb-4"
+        >
+          <span>▶️</span> Play Video
+        </button>
         
         <p className="text-lg mb-4 text-center text-gray-600">
           Your journey starts with just a few questions. Press &quot;Ready&quot; to begin.
@@ -295,14 +310,14 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
         </div>
       </div>
 
-      {/* Olivia Section - Outer Box (already has matching styling) */}
+      {/* Oliver Section - Outer Box (already has matching styling) */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
-        {/* Olivia Header */}
+        {/* Oliver Header */}
         <div className="flex items-center mb-6">
           <div className="w-24 flex-shrink-0 mr-6">
             <Image
-              src="/avatarnew.png"
-              alt="Olivia Avatar"
+              src="/oliveravatar.png"
+              alt="Oliver Avatar"
               width={96}
               height={96}
               className="rounded-full border-4 border-gray-200"
@@ -310,10 +325,10 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
             />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Olivia</h2>
+            <h2 className="text-2xl font-bold">Oliver</h2>
             <h3 className="text-xl text-gray-600">Your Audit Assistant</h3>
             <h4 className="text-sm text-gray-500 mt-2">
-              Type in the box below or ask me a question with "Ask Olivia"
+              Type in the box below or ask me a question with "Ask Oliver"
             </h4>
             <p className="text-sm mt-2 bg-yellow-50 px-3 py-1 rounded-lg inline-block transition-opacity duration-500">
               {translations[languageIndex].text}
@@ -329,7 +344,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
               <InputField
                 value={userQuestion}
                 onChange={(e) => setUserQuestion(e.target.value)}
-                placeholder="Type your question for Olivia..."
+                placeholder="Type your question for Oliver..."
                 className="flex-grow"
               />
               {userQuestion && (
@@ -361,29 +376,42 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext }) => {
             </div>
           )}
           
-          {/* Olivia's response */}
+          {/* Oliver's response */}
           <div className="bg-white p-4 rounded-lg border border-gray-200">
-            {oliviaResponse || 'Hello! How can I help you today?'}
+            {oliverResponse || 'Hello! How can I help you today?'}
           </div>
         </div>
 
-        {/* Voice Recording Button */}
-        <div className="flex justify-center items-center gap-3">
-          <button 
-            className={`${
-              isRecording ? 'bg-red-500 hover:bg-red-700' : 'bg-green-500 hover:bg-green-700'
-            } text-white font-bold py-2 px-6 rounded-full`}
-            onClick={handleToggleRecording}
-          >
-            {isRecording ? 'Stop Recording' : 'Ask Olivia'}
-          </button>
-          
-          {isLoading && (
-            <div className="flex items-center text-gray-500">
-              <span className="animate-pulse">thinking</span>
-              <span className="ml-1">...</span>
-            </div>
-          )}
+        {/* Voice Recording Button - centered container */}
+        <div className="flex flex-col items-center mt-6">
+          <div className="flex items-center justify-center space-x-4 w-full">
+            <button
+              onClick={handleToggleRecording}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
+              disabled={isLoading}
+            >
+              {isRecording ? (
+                <>
+                  <span className="animate-pulse">⏺</span>
+                  Stop
+                </>
+              ) : (
+                <>
+                  <span>🎤</span>
+                  Ask Oliver
+                </>
+              )}
+            </button>
+
+            {isLoading && (
+              <div className="text-gray-600 flex items-center ml-4 whitespace-nowrap">
+                <span>Thinking</span>
+                <span className="inline-block animate-bounce ml-1">.</span>
+                <span className="inline-block animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
+                <span className="inline-block animate-bounce" style={{ animationDelay: '0.4s' }}>.</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

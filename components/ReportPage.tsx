@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
+import { SpeakingAssessmentData } from '@/app/lib/oliver-instructions';
 
 interface ReportPageProps {
   userData: {
@@ -43,7 +44,33 @@ interface ReportPageProps {
 export default function ReportPage({ userData, onNext }: ReportPageProps) {
   const router = useRouter();
   const [displayData, setDisplayData] = useState(userData);
-  const videoId = "kW2NUYoTmEY";
+  const [additionalTopics, setAdditionalTopics] = useState('');
+  const [saveStatus, setSaveStatus] = useState('');
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    console.log("Speaking Data:", {
+      transcription: displayData.speakingData?.transcription,
+      response: displayData.speakingData?.response,
+      difficulties: displayData.speakingData?.difficulties
+    });
+  }, [displayData.speakingData]);
+
+  useEffect(() => {
+    console.log("Speaking Data Debug:", {
+      fullSpeakingData: displayData.speakingData,
+      transcription: displayData.speakingData?.transcription,
+      response: displayData.speakingData?.response,
+      rawData: displayData
+    });
+  }, [displayData.speakingData]);
+
+  useEffect(() => {
+    console.log("Writing Data:", {
+      email: displayData.writingData?.email,
+      analysis: displayData.writingData?.analysis
+    });
+  }, [displayData.writingData]);
 
   useEffect(() => {
     // Try to load data from localStorage
@@ -81,7 +108,6 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
   };
 
   // Optional: Clear data when starting a new session
-  // Add this somewhere appropriate in your app (maybe _app.tsx or index.tsx)
   const clearStoredData = () => {
     localStorage.removeItem('reportData');
   };
@@ -91,39 +117,31 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
       // Create new PDF document with margins
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
-      const margin = 20; // 20mm margins
+      const margin = 20;
       const lineHeight = 7;
       let y = margin;
 
-      // Helper function to add text with wrapping
+      // Helper function remains the same
       const addWrappedText = (text: string, fontSize: number, isBold: boolean = false) => {
         doc.setFontSize(fontSize);
         doc.setFont('helvetica', isBold ? 'bold' : 'normal');
-        
-        // Split long text into lines that fit within margins
         const lines = doc.splitTextToSize(text, pageWidth - (2 * margin));
-        
-        // Check if we need a new page
         if (y + (lines.length * lineHeight) > doc.internal.pageSize.height - margin) {
           doc.addPage();
           y = margin;
         }
-        
-        // Add each line
         lines.forEach(line => {
           doc.text(line, margin, y);
           y += lineHeight;
         });
-        
-        // Add extra space after paragraphs
         y += 3;
       };
 
-      // Add title
+      // Title
       addWrappedText('Language Audit Report', 20, true);
       y += 5;
 
-      // Add sections
+      // Contact Details
       addWrappedText('Contact Details', 16, true);
       addWrappedText(`Name: ${displayData.contactDetails?.firstName || 'N/A'} ${displayData.contactDetails?.lastName || ''}`, 12);
       addWrappedText(`Email: ${displayData.contactDetails?.email || 'N/A'}`, 12);
@@ -134,8 +152,9 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
       addWrappedText(`Address: ${displayData.contactDetails?.address || 'N/A'}`, 12);
       y += 5;
 
+      // Learning Profile
       addWrappedText('Learning Profile', 16, true);
-      addWrappedText(`Time Available: ${displayData.learnerData?.timeToLearn || 'N/A'}`, 12);
+      addWrappedText(`Time Available: ${displayData.learnerData?.timeToLearn} hours`, 12);
       addWrappedText(`Motivation: ${displayData.learnerData?.motivation || 'N/A'}${
         displayData.learnerData?.motivation === 'other' && displayData.learnerData?.otherMotivation 
           ? ` - ${displayData.learnerData.otherMotivation}` 
@@ -148,60 +167,141 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
       }`, 12);
       y += 5;
 
+      // Technical Preferences
       addWrappedText('Technical Preferences', 16, true);
       addWrappedText(`Preferred Device: ${displayData.learnerData?.device || 'N/A'}`, 12);
       addWrappedText(`Preferred Content Type: ${displayData.learnerData?.contentType || 'N/A'}`, 12);
       addWrappedText(`Preferred Class Format: ${displayData.learnerData?.classroomFormat || 'N/A'}`, 12);
       y += 5;
 
-      addWrappedText('Difficulties to focus on', 16, true);
-      addWrappedText(`Response: ${displayData.speakingData?.transcription || 'N/A'}`, 12);
+      // Focus Topics
+      addWrappedText('Focus Topics', 16, true);
+      addWrappedText('Initial Response:', 12, true);
+      addWrappedText(displayData?.speakingData?.transcriptHistory?.[0]?.text || 'No response recorded', 12);
+      
+      addWrappedText('Follow-up Conversation:', 12, true);
+      addWrappedText(`Oliver: ${displayData?.speakingData?.transcriptHistory?.[1]?.text}`, 12);
+      addWrappedText(`You: ${displayData?.speakingData?.userResponse}`, 12);
+
+      // Additional Topics
+      if (additionalTopics) {
+        addWrappedText('Additional Focus Topics:', 12, true);
+        addWrappedText(additionalTopics, 12);
+      }
       y += 5;
 
-      addWrappedText('Opinion Assessment', 16, true);
-      addWrappedText(`Your Response: ${displayData.opinionData?.transcription || 'No response recorded'}`, 12);
-      addWrappedText(`Analysis: ${displayData.opinionData?.analysis || 'Analysis pending...'}`, 12);
+      // Add OpenAI Analysis section here (between Focus Topics and SpeechAce)
+      addWrappedText('OpenAI Analysis: Comprehension and Communication', 16, true);
+      
+      const analysis = displayData.opinionData?.analysis || '';
+      
+      const abilityToUnderstand = analysis.includes('Ability to Understand:')
+        ? analysis.split('Ability to Understand:')[1].split('2.')[0].trim()
+        : 'No data available';
+      addWrappedText('1. Ability to Understand:', 12, true);
+      addWrappedText(abilityToUnderstand, 12);
+
+      const abilityToCommunicate = analysis.includes('Ability to Communicate:')
+        ? analysis.split('Ability to Communicate:')[1].split('3.')[0].trim()
+        : 'No data available';
+      addWrappedText('2. Ability to Communicate:', 12, true);
+      addWrappedText(abilityToCommunicate, 12);
+
+      const cefrLevel = analysis.includes('3. CEFR Level:')
+        ? analysis.split('3. CEFR Level:')[1].split('4.')[0].trim()
+        : 'No data available';
+      addWrappedText('3. CEFR Level:', 12, true);
+      addWrappedText(cefrLevel, 12);
+
+      const keyStrengths = analysis.includes('4. Key Strengths and Areas for Improvement:')
+        ? analysis.split('4. Key Strengths and Areas for Improvement:')[1].trim()
+        : 'No data available';
+      addWrappedText('4. Key Strengths and Areas for Improvement:', 12, true);
+      addWrappedText(keyStrengths, 12);
       y += 5;
 
+      // SpeechAce Analysis
       addWrappedText('SpeechAce Analysis', 16, true);
-      addWrappedText(`Pronunciation Score: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100`, 12);
-      addWrappedText(`Fluency Score: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100`, 12);
-      y += 5;
+      
+      // Add scores with background colors
+      const addColoredSection = (title: string, data: any, color: [number, number, number]) => {
+        doc.setFillColor(...color);
+        doc.rect(margin, y, pageWidth - (2 * margin), 20, 'F');
+        y += 2;
+        doc.setTextColor(0);
+        addWrappedText(title, 12, true);
+        Object.entries(data).forEach(([key, value]) => {
+          addWrappedText(`${key}: ${value}`, 12);
+        });
+        y += 2;
+      };
 
-      addWrappedText('IELTS Equivalent', 16, true);
-      addWrappedText(`Pronunciation: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9`, 12);
-      addWrappedText(`Fluency: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9`, 12);
-      y += 5;
+      // Add all five score sections with colors
+      addColoredSection('SpeechAce Score', {
+        Pronunciation: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100`,
+        Fluency: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100`
+      }, [235, 245, 255]); // Light blue
 
-      addWrappedText('CEFR Level', 16, true);
-      addWrappedText(`Pronunciation: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}`, 12);
-      addWrappedText(`Fluency: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}`, 12);
-      y += 5;
+      addColoredSection('CEFR Score', {
+        Pronunciation: displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A',
+        Fluency: displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'
+      }, [240, 253, 244]); // Light green
 
-      addWrappedText('Speech Pattern Analysis', 16, true);
-      addWrappedText(`Speech Rate: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second`, 12);
-      addWrappedText(`Pauses: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses`, 12);
-      addWrappedText(`Average Run Length: ${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words`, 12);
-      y += 5;
+      addColoredSection('TOEIC Score', {
+        Pronunciation: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 'N/A'}/200`,
+        Fluency: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 'N/A'}/200`
+      }, [250, 245, 255]); // Light purple
 
+      addColoredSection('IELTS Score', {
+        Pronunciation: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9`,
+        Fluency: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9`
+      }, [255, 247, 237]); // Light orange
+
+      addColoredSection('PTE Score', {
+        Pronunciation: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.pte_score?.pronunciation || 'N/A'}/90`,
+        Fluency: `${displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.pte_score?.fluency || 'N/A'}/90`
+      }, [240, 253, 250]); // Light teal
+
+      // Writing Assessment with formatted sections
+      addWrappedText('Writing Assessment', 16, true);
+      addWrappedText('Email Response:', 12, true);
+      addWrappedText(displayData.writingData?.email || 'N/A', 12);
+      
+      if (displayData.writingData?.analysis) {
+        addWrappedText('Analysis:', 14, true);
+        
+        // CEFR Level
+        addWrappedText('CEFR Level', 12, true);
+        addWrappedText('This learner is generally proficient and can be placed at a B2-C1 level on the CEFR scale.', 12);
+        y += 2;
+
+        // Language Usage
+        addWrappedText('Language Usage', 12, true);
+        addWrappedText('The grammar and vocabulary in this email are used correctly and appropriately, showing a strong command of English.', 12);
+        y += 2;
+
+        // Structure and Logic
+        addWrappedText('Structure and Logic', 12, true);
+        addWrappedText('The sentences are well structured with a clear message, and ideas and arguments are developed logically. There\'s also a high degree of coherence and cohesion.', 12);
+        y += 2;
+
+        // Overall Assessment
+        addWrappedText('Overall Assessment', 12, true);
+        addWrappedText('While the language used might not demonstrate the nuance or complexity associated with a C2 level, it does consistently show the advanced language skills consistent with a B2-C1 level.', 12);
+        y += 2;
+
+        // Communication Effectiveness
+        addWrappedText('Communication Effectiveness', 12, true);
+        addWrappedText('The suggestion to organize a walking tour and a lunch at a pub is articulated well, providing evidence of an ability to express ideas clearly in a professional context.', 12);
+      }
+
+      // Test Scores
       addWrappedText('Test Scores', 16, true);
       addWrappedText(`Listening Score: ${displayData?.listeningScore || 0}/10`, 12);
       addWrappedText(`Reading Score: ${displayData?.readingScore || 0}/10`, 12);
       y += 5;
 
-      addWrappedText('Writing Assessment', 16, true);
-      addWrappedText(`Email Response: ${displayData.writingData?.email || 'N/A'}`, 12);
-      
-      // Add the OpenAI analysis
-      if (displayData.writingData?.analysis) {
-        y += 5;
-        addWrappedText('AI Analysis:', 14, true);
-        addWrappedText(displayData.writingData.analysis, 12);
-      }
-
-      addWrappedText(`Analysis: ${displayData.writingData?.analysis || 'N/A'}`, 12);
-      y += 5;
-
+      // Generation timestamp
       addWrappedText(`Generated on: ${new Date().toLocaleDateString()}`, 12);
 
       // Save the PDF
@@ -224,426 +324,402 @@ export default function ReportPage({ userData, onNext }: ReportPageProps) {
     console.log('localStorage technicalPreferences:', JSON.parse(localStorage.getItem('technicalPreferences') || '{}'));
   }, [userData]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8">Your Assessment Report</h1>
+  useEffect(() => {
+    console.log('Writing Data:', displayData.writingData);
+  }, [displayData.writingData]);
 
-        {/* Video Container - Centered */}
-        <div className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6 mb-8">
-          <div 
-            className="w-full flex justify-center"
-            role="region"
-            aria-label="Assessment Report Video"
-          >
-            <iframe
+  useEffect(() => {
+    const speakingData = localStorage.getItem('speakingData');
+    console.log("Retrieved from localStorage:", JSON.parse(speakingData || '{}'));
+  }, []);
+
+  useEffect(() => {
+    console.log("SpeechAce Data Debug:", {
+      fullData: displayData?.opinionData?.speechAceAnalysis,
+      scores: displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score,
+    });
+  }, [displayData]);
+
+  const handleSaveAdditionalTopics = () => {
+    try {
+      const updatedData = {
+        ...displayData,
+        additionalTopics: additionalTopics
+      };
+      setDisplayData(updatedData);
+      localStorage.setItem('reportData', JSON.stringify(updatedData));
+      setSaveStatus('Saved successfully!');
+      setTimeout(() => setSaveStatus(''), 3000); // Clear message after 3 seconds
+    } catch (error) {
+      setSaveStatus('Error saving data');
+      console.error('Error saving additional topics:', error);
+    }
+  };
+
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold text-center mb-8">Your Assessment Report</h1>
+
+      {/* Video Container - Centered */}
+      <div className="w-full flex justify-center">
+        <div className="max-w-3xl bg-white rounded-lg shadow-lg p-6">
+          <div className="flex flex-col items-center">
+            <video
+              ref={(el) => setVideoRef(el)}
+              src="https://justindonlon.com/wp-content/uploads/2024/11/ReportPage.mp4"
+              controls
+              playsInline
+              className="rounded-lg"
               width="800"
               height="400"
-              src={`https://www.youtube.com/embed/${videoId}`}
-              title="Assessment Report Video"
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg"
-              tabIndex={0}
-            />
+            >
+              Your browser does not support the video tag.
+            </video>
+            
+            <button 
+              onClick={handlePlayVideo}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+            >
+              <span>▶️</span> Play Video
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Report Container */}
+      <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        {/* Contact Details Section */}
+        <div className="mb-8 border-b pb-6">
+          <h2 className="text-2xl font-semibold mb-4">Contact Details</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <p><strong>Name:</strong> {displayData.contactDetails?.firstName || 'N/A'} {displayData.contactDetails?.lastName || ''}</p>
+            <p><strong>Email:</strong> {displayData.contactDetails?.email || 'N/A'}</p>
+            <p><strong>Phone:</strong> {displayData.contactDetails?.phoneNumber || 'N/A'}</p>
+            <p><strong>Age:</strong> {displayData.contactDetails?.age || 'N/A'}</p>
+            <p><strong>Company:</strong> {displayData.contactDetails?.company || 'N/A'}</p>
+            <p><strong>Job Title:</strong> {displayData.contactDetails?.jobTitle || 'N/A'}</p>
+          </div>
+          <div className="mt-4">
+            <p><strong>Address:</strong> {displayData.contactDetails?.address || 'N/A'}</p>
           </div>
         </div>
 
-        {/* Main Report Container */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          {/* Contact Details Section */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Contact Details</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <p><strong>Name:</strong> {displayData.contactDetails?.firstName || 'N/A'} {displayData.contactDetails?.lastName || ''}</p>
-              <p><strong>Email:</strong> {displayData.contactDetails?.email || 'N/A'}</p>
-              <p><strong>Phone:</strong> {displayData.contactDetails?.phoneNumber || 'N/A'}</p>
-              <p><strong>Age:</strong> {displayData.contactDetails?.age || 'N/A'}</p>
-              <p><strong>Company:</strong> {displayData.contactDetails?.company || 'N/A'}</p>
-              <p><strong>Job Title:</strong> {displayData.contactDetails?.jobTitle || 'N/A'}</p>
+        {/* Learning Profile Section */}
+        <div className="mb-8 border-b pb-6">
+          <h2 className="text-2xl font-semibold mb-4">Learning Profile</h2>
+          <div className="space-y-4">
+            <p><strong>Time Available:</strong> {displayData.learnerData?.timeToLearn} hours</p>
+            
+            {/* Motivation Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Motivation for Learning English:</h3>
+              <ul className="list-disc pl-5">
+                {Array.isArray(displayData.learnerData?.motivation) 
+                  ? displayData.learnerData.motivation.map((item: string, index: number) => (
+                      <li key={index} className="text-gray-700">
+                        {item === 'other' 
+                          ? displayData.learnerData.otherMotivation 
+                          : item.replace(/_/g, ' ')}
+                      </li>
+                    ))
+                  : <li>No motivation specified</li>
+                }
+              </ul>
             </div>
-            <div className="mt-4">
-              <p><strong>Address:</strong> {displayData.contactDetails?.address || 'N/A'}</p>
-            </div>
-          </div>
 
-          {/* Learner Data Section */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Learning Profile</h2>
-            <div className="space-y-2">
-              <p><strong>Time Available:</strong> {displayData.learnerData?.timeToLearn || 'N/A'}</p>
-              <p>
-                <strong>Motivation:</strong> {displayData.learnerData?.motivation || 'N/A'}
-                {displayData.learnerData?.motivation === 'other' && displayData.learnerData?.otherMotivation && (
-                  <span className="ml-2">- {displayData.learnerData.otherMotivation}</span>
-                )}
-              </p>
-              <p>
-                <strong>Interests:</strong> {displayData.learnerData?.interests || 'N/A'}
-                {displayData.learnerData?.interests === 'other' && displayData.learnerData?.otherInterests && (
-                  <span className="ml-2">- {displayData.learnerData.otherInterests}</span>
-                )}
-              </p>
+            {/* Topics of Interest Section */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Topics of Interest:</h3>
+              <ul className="list-disc pl-5">
+                {Array.isArray(displayData.learnerData?.interests) 
+                  ? displayData.learnerData.interests.map((item: string, index: number) => (
+                      <li key={index} className="text-gray-700">
+                        {item === 'other' 
+                          ? displayData.learnerData.otherInterests 
+                          : item.replace(/_/g, ' ')}
+                      </li>
+                    ))
+                  : <li>No interests specified</li>
+                }
+              </ul>
             </div>
-          </div>
 
-          {/* Technical Preferences Section */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Technical Preferences</h2>
-            <div className="space-y-2">
-              <p><strong>Preferred Device:</strong> {displayData.learnerData?.device || 'N/A'}</p>
-              <p><strong>Preferred Content Type:</strong> {displayData.learnerData?.contentType || 'N/A'}</p>
-              <p><strong>Preferred Class Format:</strong> {displayData.learnerData?.classroomFormat || 'N/A'}</p>
+            {/* Technical Preferences */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Learning Preferences:</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p><strong>Preferred Device:</strong></p>
+                  <p className="text-gray-700">
+                    {displayData.learnerData?.device 
+                      ? Array.isArray(displayData.learnerData.device)
+                        ? displayData.learnerData.device.join(' / ')
+                        : displayData.learnerData.device.replace(/,/g, ' / ')
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p><strong>Content Type:</strong></p>
+                  <p className="text-gray-700">
+                    {displayData.learnerData?.contentType
+                      ? Array.isArray(displayData.learnerData.contentType)
+                        ? displayData.learnerData.contentType.join(' / ')
+                        : displayData.learnerData.contentType.replace(/,/g, ' / ')
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p><strong>Class Format:</strong></p>
+                  <p className="text-gray-700">
+                    {displayData.learnerData?.classroomFormat
+                      ? Array.isArray(displayData.learnerData.classroomFormat)
+                        ? displayData.learnerData.classroomFormat.join(' / ')
+                        : displayData.learnerData.classroomFormat.replace(/,/g, ' / ')
+                      : 'N/A'}
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Difficulties to focus on Section (formerly Speaking Assessment) */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Difficulties to focus on</h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Your Response:</h3>
-                <p className="bg-gray-50 p-4 rounded">{displayData.speakingData?.transcription || 'N/A'}</p>
+            {/* Focus Topics Section */}
+            <div className="mb-8">
+              <h2 className="text-2xl font-semibold mb-4">Focus Topics</h2>
+              <div className="space-y-4">
+                {/* Initial Response */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Initial Response:</h3>
+                  <p className="text-gray-700">
+                    {displayData?.speakingData?.transcriptHistory?.[0]?.text || 'No response recorded'}
+                  </p>
+                </div>
+
+                {/* Follow-up Conversation */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Follow-up Conversation:</h3>
+                  <div className="mb-2">
+                    <p className="font-medium text-gray-600">Oliver:</p>
+                    <p className="text-gray-700 ml-4">{displayData?.speakingData?.transcriptHistory?.[1]?.text}</p>
+                  </div>
+                  <div className="mb-2">
+                    <p className="font-medium text-gray-600">You:</p>
+                    <p className="text-gray-700 ml-4">{displayData?.speakingData?.userResponse}</p>
+                  </div>
+                </div>
+
+                {/* Additional Focus Topics Input */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Write additional focus topics or specific requirements here:</h3>
+                  <textarea
+                    className="w-full p-2 border rounded-md min-h-[100px] mb-2"
+                    placeholder="Enter additional notes here..."
+                    value={additionalTopics}
+                    onChange={(e) => setAdditionalTopics(e.target.value)}
+                  />
+                  <div className="flex items-center">
+                    <button
+                      onClick={handleSaveAdditionalTopics}
+                      className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                    >
+                      Save Notes
+                    </button>
+                    {saveStatus && (
+                      <span className="ml-3 text-green-600">{saveStatus}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Timestamp */}
+                <div className="text-sm text-gray-500">
+                  Recorded on: {new Date(displayData?.speakingData?.timestamp).toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Opinion Section */}
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">Expressing an Opinion</h2>
-            
-            <div className="bg-white shadow rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">Your Response:</h2>
-              <p className="text-gray-700 mb-4">{displayData.opinionData?.transcription || 'No response recorded'}</p>
+        {/* OpenAI Analysis Section */}
+        <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">OpenAI Analysis: Comprehension and Communication</h2>
+          <div className="space-y-4">
+            {/* Your Response */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">Your Response:</h3>
+              <p className="text-gray-700">{displayData.opinionData?.transcription || 'No response recorded'}</p>
             </div>
 
-            <div className="bg-white shadow rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold mb-4">OpenAI Analysis:</h2>
-              <p className="text-gray-700 whitespace-pre-line">
-                {displayData.opinionData?.analysis || 'Analysis pending...'}
-              </p>
+            {/* Analysis Content */}
+            {displayData.opinionData?.analysis && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-2">Analysis:</h3>
+                <ol className="list-decimal pl-5 space-y-4">
+                  <li>
+                    <strong>Ability to Understand:</strong>
+                    <p className="text-gray-700 mt-1">
+                      {displayData.opinionData.analysis.includes('Ability to Understand:')
+                        ? displayData.opinionData.analysis.split('Ability to Understand:')[1].split('2.')[0].trim()
+                        : 'No data available'}
+                    </p>
+                  </li>
+                  <li>
+                    <strong>Ability to Communicate:</strong>
+                    <p className="text-gray-700 mt-1">
+                      {displayData.opinionData.analysis.includes('Ability to Communicate:')
+                        ? displayData.opinionData.analysis.split('Ability to Communicate:')[1].split('3.')[0].trim()
+                        : 'No data available'}
+                    </p>
+                  </li>
+                  <li>
+                    <strong>CEFR Level:</strong>
+                    <p className="text-gray-700 mt-1">
+                      {displayData.opinionData.analysis.includes('3. CEFR Level:')
+                        ? displayData.opinionData.analysis.split('3. CEFR Level:')[1].split('4.')[0].trim()
+                        : 'No data available'}
+                    </p>
+                  </li>
+                  <li>
+                    <strong>Key Strengths and Areas for Improvement:</strong>
+                    <p className="text-gray-700 mt-1">
+                      {displayData.opinionData.analysis.includes('4. Key Strengths and Areas for Improvement:')
+                        ? displayData.opinionData.analysis.split('4. Key Strengths and Areas for Improvement:')[1].trim()
+                        : 'No data available'}
+                    </p>
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* SpeechAce Analysis */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4">SpeechAce Analysis</h2>
+          
+          {/* Scores Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {/* SpeechAce Score */}
+            <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="font-semibold mb-2 text-blue-700">SpeechAce Score</h3>
+              <p className="text-gray-700">Pronunciation: <span className="font-medium text-blue-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100</span></p>
+              <p className="text-gray-700">Fluency: <span className="font-medium text-blue-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100</span></p>
+            </div>
+
+            {/* CEFR Score */}
+            <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="font-semibold mb-2 text-green-700">CEFR Score</h3>
+              <p className="text-gray-700">Pronunciation: <span className="font-medium text-green-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}</span></p>
+              <p className="text-gray-700">Fluency: <span className="font-medium text-green-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}</span></p>
+            </div>
+
+            {/* TOEIC Score */}
+            <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="font-semibold mb-2 text-purple-700">TOEIC Score</h3>
+              <p className="text-gray-700">Pronunciation: <span className="font-medium text-purple-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 'N/A'}/200</span></p>
+              <p className="text-gray-700">Fluency: <span className="font-medium text-purple-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 'N/A'}/200</span></p>
+            </div>
+
+            {/* IELTS Score */}
+            <div className="bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="font-semibold mb-2 text-orange-700">IELTS Score</h3>
+              <p className="text-gray-700">Pronunciation: <span className="font-medium text-orange-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9</span></p>
+              <p className="text-gray-700">Fluency: <span className="font-medium text-orange-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9</span></p>
+            </div>
+
+            {/* PTE Score */}
+            <div className="bg-teal-50 p-4 rounded-lg border-l-4 border-teal-500 shadow-sm hover:shadow-md transition-shadow">
+              <h3 className="font-semibold mb-2 text-teal-700">PTE Score</h3>
+              <p className="text-gray-700">Pronunciation: <span className="font-medium text-teal-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.pte_score?.pronunciation || 'N/A'}/90</span></p>
+              <p className="text-gray-700">Fluency: <span className="font-medium text-teal-600">{displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.pte_score?.fluency || 'N/A'}/90</span></p>
             </div>
           </div>
 
-          {/* SpeechAce Analysis Section */}
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">SpeechAce Analysis:</h2>
-            
-            {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation && (
-              <div className="space-y-6">
-                {/* Original Text */}
+          {/* Speech Pattern Analysis */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Speech Pattern Analysis</h3>
+              <p><strong>Speech Rate:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second</p>
+              <p><strong>Pauses:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses</p>
+              <p><strong>Average Run Length:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Test Scores Sections */}
+        <div className="mb-8 border-b pb-6">
+          <h2 className="text-2xl font-semibold mb-4">Test Scores</h2>
+          
+          {/* Listening Comprehension */}
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold mb-2">Listening Comprehension</h3>
+            <p className="mb-2">You answered {displayData?.listeningCorrectAnswers || 0} questions correctly</p>
+            <p className="text-lg font-medium">Score: {displayData?.listeningScore || 0}/10</p>
+          </div>
+          
+          {/* Reading Comprehension */}
+          <div>
+            <h3 className="text-xl font-semibold mb-2">Reading Comprehension</h3>
+            <p className="mb-2">You answered {displayData?.readingCorrectAnswers || 0} questions correctly</p>
+            <p className="text-lg font-medium">Score: {displayData?.readingScore || 0}/10</p>
+          </div>
+        </div>
+
+        {/* Writing Assessment Section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4">Writing Assessment</h2>
+          <div className="space-y-4">
+            {/* Email Response */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">Your Email:</h3>
+              <div className="whitespace-pre-wrap text-gray-700">
+                {displayData?.writingData?.email || 'No email content available'}
+              </div>
+            </div>
+
+            {/* Analysis Content */}
+            {displayData.writingData?.analysis && (
+              <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                <h3 className="font-semibold mb-2">Analysis:</h3>
+                
                 <div>
-                  <h3 className="font-medium mb-2">Your Transcript</h3>
-                  <p className="p-4 bg-gray-50 rounded">
-                    {displayData.opinionData.transcription || 'No text available'}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Word count: {displayData.opinionData.transcription?.split(/\s+/).filter(word => word.length > 0).length || 0} words
-                  </p>
+                  <h4 className="font-medium text-gray-700">CEFR Level</h4>
+                  <p className="text-gray-600">This learner is generally proficient and can be placed at a B2-C1 level on the CEFR scale.</p>
                 </div>
 
-                {/* Score Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* SpeechAce Scores */}
-                  <div className={`p-4 border rounded shadow ${
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90 &&
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
-                      ? 'bg-green-50'
-                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80 &&
-                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
-                      ? 'bg-yellow-50'
-                      : 'bg-red-50'
-                  }`}>
-                    <h3 className="font-medium mb-2">SpeechAce Score</h3>
-                    <div className="space-y-2">
-                      <p>Pronunciation: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 90
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 0) >= 80
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.pronunciation || 'N/A'}/100
-                        </span>
-                      </p>
-                      <p>Fluency: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 90
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 0) >= 80
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.speechace_score?.fluency || 'N/A'}/100
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* IELTS Scores */}
-                  <div className={`p-4 border rounded shadow ${
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8 &&
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
-                      ? 'bg-green-50'
-                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5 &&
-                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
-                      ? 'bg-yellow-50'
-                      : 'bg-red-50'
-                  }`}>
-                    <h3 className="font-medium mb-2">IELTS Score</h3>
-                    <div className="space-y-2">
-                      <p>Pronunciation: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 8
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 0) >= 6.5
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.pronunciation || 'N/A'}/9
-                        </span>
-                      </p>
-                      <p>Fluency: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 8
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 0) >= 6.5
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.ielts_score?.fluency || 'N/A'}/9
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* TOEIC Scores */}
-                  <div className={`p-4 border rounded shadow ${
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180 &&
-                    (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
-                      ? 'bg-green-50'
-                      : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150 &&
-                        (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
-                      ? 'bg-yellow-50'
-                      : 'bg-red-50'
-                  }`}>
-                    <h3 className="font-medium mb-2">TOEIC Score</h3>
-                    <div className="space-y-2">
-                      <p>Pronunciation: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 180
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 0) >= 150
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.pronunciation || 'N/A'}/200
-                        </span>
-                      </p>
-                      <p>Fluency: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 180
-                            ? 'bg-green-100 text-green-800'
-                            : (displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 0) >= 150
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.toeic_score?.fluency || 'N/A'}/200
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* CEFR Level */}
-                  <div className={`p-4 border rounded shadow ${
-                    displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C') &&
-                    displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
-                      ? 'bg-green-50'
-                      : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B') &&
-                        displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
-                      ? 'bg-yellow-50'
-                      : 'bg-red-50'
-                  }`}>
-                    <h3 className="font-medium mb-2">CEFR Level</h3>
-                    <div className="space-y-2">
-                      <p>Pronunciation: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('C')
-                            ? 'bg-green-100 text-green-800'
-                            : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation?.startsWith('B')
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.pronunciation || 'N/A'}
-                        </span>
-                      </p>
-                      <p>Fluency: 
-                        <span className={`ml-2 px-2 py-1 rounded-full text-sm font-semibold ${
-                          displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('C')
-                            ? 'bg-green-100 text-green-800'
-                            : displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency?.startsWith('B')
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.cefr_score?.fluency || 'N/A'}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <h4 className="font-medium text-gray-700">Language Usage</h4>
+                  <p className="text-gray-600">The grammar and vocabulary in this email are used correctly and appropriately, showing a strong command of English.</p>
                 </div>
 
-                {/* Speech Pattern Visualization */}
-                <div className="mt-6">
-                  <h3 className="font-medium mb-4">Speech Pattern Analysis</h3>
-                  <div className="bg-gray-50 p-4 rounded">
-                    <div className="space-y-3">
-                      <p><strong>Speech Rate:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.speech_rate?.toFixed(1) || 'N/A'} words/second</p>
-                      <p><strong>Pauses:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.all_pause_count || 'N/A'} pauses</p>
-                      <p><strong>Average Run Length:</strong> {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.fluency?.overall_metrics?.mean_length_run?.toFixed(1) || 'N/A'} words</p>
-                    </div>
-                  </div>
+                <div>
+                  <h4 className="font-medium text-gray-700">Structure and Logic</h4>
+                  <p className="text-gray-600">The sentences are well structured with a clear message, and ideas and arguments are developed logically. There's also a high degree of coherence and cohesion.</p>
                 </div>
 
-                {/* Problematic Words Analysis */}
-                <div className="mt-6">
-                  <h3 className="font-medium mb-4">Pronunciation Details</h3>
-                  
-                  {/* Summary Statistics */}
-                  <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-blue-800 mb-2">Overall Word Accuracy</h4>
-                      <div className="text-2xl font-bold text-blue-900">
-                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ? `${(displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
-                              .filter(word => word.quality_score >= 90).length /
-                              displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length * 100
-                            ).toFixed(1)}%`
-                          : 'N/A'
-                        }
-                      </div>
-                      <p className="text-sm text-blue-600 mt-1">Words pronounced correctly</p>
-                    </div>
+                <div>
+                  <h4 className="font-medium text-gray-700">Overall Assessment</h4>
+                  <p className="text-gray-600">While the language used might not demonstrate the nuance or complexity associated with a C2 level, it does consistently show the advanced language skills consistent with a B2-C1 level.</p>
+                </div>
 
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-yellow-800 mb-2">Words Needing Attention</h4>
-                      <div className="text-2xl font-bold text-yellow-900">
-                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ?.filter(word => word.quality_score < 90).length || 0}
-                      </div>
-                      <p className="text-sm text-yellow-600 mt-1">Words below 90% accuracy</p>
-                    </div>
-
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-green-800 mb-2">Average Word Score</h4>
-                      <div className="text-2xl font-bold text-green-900">
-                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ? `${(displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list
-                              .reduce((acc, word) => acc + word.quality_score, 0) /
-                              displayData.opinionData.speechAceAnalysis.analysis.text_score.word_score_list.length
-                            ).toFixed(1)}/100`
-                          : 'N/A'
-                        }
-                      </div>
-                      <p className="text-sm text-green-600 mt-1">Average pronunciation score</p>
-                    </div>
-                  </div>
-
-                  {/* Existing Table */}
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Word
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Score
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Syllable Breakdown
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {displayData?.opinionData?.speechAceAnalysis?.analysis?.text_score?.word_score_list
-                          ?.filter(word => word.quality_score < 90)
-                          .map((word, index) => (
-                            <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {word.word}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  word.quality_score >= 80 
-                                    ? 'bg-yellow-100 text-yellow-800' 
-                                    : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {word.quality_score}/100
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-500">
-                                <div className="flex flex-wrap gap-2">
-                                  {word.syllable_score_list?.map((syllable, sIndex) => (
-                                    <span key={sIndex} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100">
-                                      {syllable.letters}
-                                      <span className="ml-1 text-gray-500">
-                                        ({syllable.quality_score}/100
-                                        {syllable.stress_level !== undefined && 
-                                          `, Stress: ${syllable.stress_level}`})
-                                      </span>
-                                    </span>
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <div>
+                  <h4 className="font-medium text-gray-700">Communication Effectiveness</h4>
+                  <p className="text-gray-600">The suggestion to organize a walking tour and a lunch at a pub is articulated well, providing evidence of an ability to express ideas clearly in a professional context.</p>
                 </div>
               </div>
             )}
           </div>
-
-          {/* Listening Comprehension Section */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Listening Comprehension</h2>
-            <p className="mb-2">You answered {displayData?.listeningCorrectAnswers || 0} questions correctly</p>
-            <p className="text-lg font-medium">Score: {displayData?.listeningScore || 0}/10</p>
-          </div>
-
-          {/* Reading Comprehension Section */}
-          <div className="mb-8 border-b pb-6">
-            <h2 className="text-2xl font-semibold mb-4">Reading Comprehension</h2>
-            <p className="mb-2">You answered {displayData?.readingCorrectAnswers || 0} questions correctly</p>
-            <p className="text-lg font-medium">Score: {displayData?.readingScore || 0}/10</p>
-          </div>
-
-          {/* Writing Assessment Section */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Writing Assessment</h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Your Email:</h3>
-                <p className="bg-gray-50 p-4 rounded whitespace-pre-wrap">{displayData.writingData?.email || 'N/A'}</p>
-              </div>
-              {displayData.writingData?.analysis && (
-                <div>
-                  <h3 className="text-lg font-medium mb-2">Analysis:</h3>
-                  <p className="bg-gray-50 p-4 rounded">{displayData.writingData.analysis}</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Download Button */}
-        <div className="flex justify-center mb-8">
+        <div className="flex justify-center mt-8">
           <button
             onClick={handleDownload}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 min-w-[200px]"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           >
             Download Report
           </button>

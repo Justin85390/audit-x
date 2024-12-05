@@ -1,14 +1,9 @@
-import { NextResponse } from 'next/server';
-
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { prompt, type } = await request.json();
+    const { prompt, type } = await req.json();
     
     if (!prompt) {
-      return NextResponse.json(
-        { error: 'No prompt provided' },
-        { status: 400 }
-      );
+      return Response.json({ error: 'No prompt provided' }, { status: 400 });
     }
 
     console.log('Received prompt:', prompt);
@@ -16,12 +11,25 @@ export async function POST(request: Request) {
 
     const analysisPrompt = type === 'opinion' 
       ? `
-            Analyze this English speaking sample and provide:
-            1. CEFR level (A1, A2, B1, B2, C1, or C2)
-            2. Brief explanation of why this level was assigned
-            3. Key strengths and areas for improvement
+            Analyze this English speaking sample and provide short responses for:
+            1. Ability to Understand: Assess how well the speaker demonstrates comprehension of the topic, including the use of appropriate responses and relevant vocabulary.
+            2. Ability to Communicate: Evaluate the speaker's overall ability to convey their thoughts clearly, including coherence, fluency, and effective use of language.
+            3. CEFR level (A1, A2, B1, B2, C1, or C2) with a brief explanation.
+            4. Key strengths and areas for improvement.
 
             Speaking sample: "${prompt}"
+          `
+      : type === 'writing'
+      ? `
+            Analyze this English writing sample and provide short responses for:
+            1. Task Achievement: Assess how well the writer addresses the task and communicates their ideas.
+            2. Coherence & Cohesion: Evaluate the organization, paragraph structure, and use of linking devices.
+            3. Vocabulary: Comment on range and accuracy of vocabulary use.
+            4. Grammar: Assess grammatical range and accuracy.
+            5. CEFR level (A1, A2, B1, B2, C1, or C2) with a brief explanation.
+            6. Key strengths and areas for improvement.
+
+            Writing sample: "${prompt}"
           `
       : prompt;
 
@@ -56,15 +64,21 @@ export async function POST(request: Request) {
     console.log('OpenAI response:', data);
 
     const analysis = data.choices[0].message.content;
-    return NextResponse.json({ analysis });
+    return new Response(JSON.stringify({ analysis }), {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
   } catch (error: any) {
     console.error('Analysis error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to analyze text',
-        details: error.message 
+    return new Response(JSON.stringify({
+      error: 'Failed to analyze text',
+      details: error.message
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
       },
-      { status: 500 }
-    );
+    });
   }
 }

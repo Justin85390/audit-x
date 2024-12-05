@@ -24,6 +24,8 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
 
   const [countryCode, setCountryCode] = useState("33");
 
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+
   const countryCodes = [
     { id: 'us-can', code: "1", country: "USA/Canada" },
     { id: 'fr', code: "33", country: "France" },
@@ -105,23 +107,37 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
     onNext();
   };
 
+  const handlePlayVideo = () => {
+    if (videoRef) {
+      videoRef.muted = false;
+      videoRef.play();
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
       <h1 className="text-4xl font-bold text-center">Your Contact Details</h1>
 
       {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="w-full flex justify-center">
-          <iframe
-            width="800"
-            height="400"
-            src="https://www.youtube.com/embed/rbpcbMMdbyo"
-            title="Contact Details Video"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+        <div className="w-full flex flex-col items-center">
+          <video
+            ref={(el) => setVideoRef(el)}
+            src="https://justindonlon.com/wp-content/uploads/2024/11/ContactDetails.mp4"
+            controls
+            playsInline
             className="rounded-lg"
-          />
+            width="100%"
+          >
+            Your browser does not support the video tag.
+          </video>
+          
+          <button 
+            onClick={handlePlayVideo}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+          >
+            <span>▶️</span> Play Video
+          </button>
         </div>
       </div>
 
@@ -214,14 +230,18 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
                   Age
                   <span className="ml-2 text-sm text-gray-500 italic">(Âge)</span>
                 </Label>
-                <Input
-                  id="age"
-                  name="age"
-                  type="number"
+                <SelectWrapper
+                  options={[
+                    { id: 'under18', value: 'under 18', label: 'Under 18' },
+                    { id: '18-25', value: '18-25', label: '18 - 25' },
+                    { id: '25-45', value: '25-45', label: '25 - 45' },
+                    { id: '45plus', value: '45+', label: '45+' }
+                  ]}
                   value={formData.age}
-                  onChange={handleChange}
-                  required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, age: value }))}
+                  placeholder="Select age range"
+                  prefix="age"
+                  className="w-full"
                 />
               </div>
 
