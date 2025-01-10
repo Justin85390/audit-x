@@ -12,6 +12,7 @@ import ListeningComprehensionPage from '@/components/ListeningComprehensionPage'
 import ReadingComprehensionPage from '@/components/ReadingComprehensionPage';
 import WritingPage from '@/components/WritingPage';
 import ReportPage from '@/components/ReportPage';
+import NeedsAnalysisPage from '@/components/NeedsAnalysisPage';
 
 interface UserData {
   contactDetails: {
@@ -42,12 +43,16 @@ interface UserData {
   listeningScore: number;
   readingScore: number;
   writingData: {
+    to: string;
+    subject: string;
     email: string;
+    analysis: string;
+    timestamp: string;
   };
 }
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState('welcome');
   const [userData, setUserData] = useState<UserData>({
     contactDetails: {
       firstName: '',
@@ -77,11 +82,38 @@ export default function Home() {
     listeningScore: 0,
     readingScore: 0,
     writingData: {
-      email: ''
+      to: '',
+      subject: '',
+      email: '',
+      analysis: '',
+      timestamp: ''
     }
   });
 
-  const nextPage = () => setCurrentPage((prev) => prev + 1);
+  const nextPage = () => setCurrentPage((prev) => {
+    switch (prev) {
+      case 'welcome':
+        return 'contact';
+      case 'contact':
+        return 'learnerData';
+      case 'learnerData':
+        return 'needsAnalysis';
+      case 'needsAnalysis':
+        return 'speaking';
+      case 'speaking':
+        return 'opinion';
+      case 'opinion':
+        return 'listeningComprehension';
+      case 'listeningComprehension':
+        return 'readingComprehension';
+      case 'readingComprehension':
+        return 'writing';
+      case 'writing':
+        return 'report';
+      default:
+        return prev;
+    }
+  });
 
   const updateUserData = (key: string, data: any) => {
     console.log('Updating user data:', key, data);
@@ -94,23 +126,34 @@ export default function Home() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 1:
+      case 'welcome':
         return <WelcomePage onNext={nextPage} />;
-      case 2:
+      case 'contact':
         return <ContactDetailsPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 3:
-        return <LearnerDataPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 4:
-        return <SpeakingPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 5:
-        return <OpinionPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 6:
-        return <ListeningComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 7:
-        return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 8:
+      case 'learnerData':
+        return <LearnerDataPage
+          onNext={nextPage}
+          updateUserData={updateUserData}
+        />;
+      case 'needsAnalysis':
+        return <NeedsAnalysisPage
+          onNext={nextPage}
+          updateUserData={updateUserData}
+        />;
+      case 'speaking':
+        return <SpeakingPage
+          onNext={nextPage}
+          updateUserData={updateUserData}
+        />;
+      case 'writing':
         return <WritingPage onNext={nextPage} updateUserData={updateUserData} />;
-      case 9:
+      case 'opinion':
+        return <OpinionPage onNext={nextPage} updateUserData={updateUserData} />;
+      case 'listeningComprehension':
+        return <ListeningComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
+      case 'readingComprehension':
+        return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
+      case 'report':
         return <ReportPage userData={userData} onNext={nextPage} />;
       default:
         return <div>Page not found</div>;
