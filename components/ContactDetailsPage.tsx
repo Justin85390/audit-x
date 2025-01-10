@@ -1,94 +1,199 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectWrapper } from "@/components/ui/select-wrapper";
 import { Textarea } from "@/components/ui/textarea";
+import Image from 'next/image';
 
 interface ContactDetailsPageProps {
   onNext: () => void;
   updateUserData: (key: string, value: any) => void;
+  onLanguageChange?: (language: Language) => void;
 }
 
-export default function ContactDetailsPage({ onNext, updateUserData }: ContactDetailsPageProps) {
-  const [formData, setFormData] = useState({
+type Language = 'en' | 'fr';
+
+interface LanguageContent {
+  title: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  timeCommitment: {
+    question: string;
+    placeholder: string;
+    options: {
+      lessThan2: string;
+      twoToFour: string;
+      fourToSix: string;
+      moreThanSix: string;
+    };
+  };
+  motivation: {
+    question: string;
+    placeholder: string;
+    options: {
+      work: string;
+      academic: string;
+      travel: string;
+      personal: string;
+      other: string;
+    };
+  };
+  interests: {
+    question: string;
+    placeholder: string;
+    options: {
+      business: string;
+      culture: string;
+      science: string;
+      currentEvents: string;
+      other: string;
+    };
+  };
+  privacyNotice: string;
+  submitButton: string;
+  videoButton: string;
+}
+
+type MotivationOption = 'work' | 'academic' | 'travel' | 'personal' | 'other';
+type InterestOption = 'business' | 'culture' | 'science' | 'current' | 'other';
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface SelectOptionWithValue<T = string> {
+  value: T;
+  label: string;
+}
+
+// Add this type to handle multi-select values properly
+type MultiSelectValue = string | string[];
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  timeCommitment: string;
+  motivation: string[];
+  interests: string[];
+}
+
+export default function ContactDetailsPage({ onNext, updateUserData, onLanguageChange }: ContactDetailsPageProps) {
+  const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
     email: "",
-    phoneNumber: "",
-    age: "",
-    address: "",
-    company: "",
-    jobTitle: "",
-  })
-
-  const [countryCode, setCountryCode] = useState("33");
+    timeCommitment: "",
+    motivation: [],
+    interests: []
+  });
 
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
 
-  const countryCodes = [
-    { id: 'us-can', code: "1", country: "USA/Canada" },
-    { id: 'fr', code: "33", country: "France" },
-    { id: 'uk', code: "44", country: "UK" },
-    { id: 'de', code: "49", country: "Germany" },
-    { id: 'es', code: "34", country: "Spain" },
-    { id: 'it', code: "39", country: "Italy" },
-    { id: 'pt', code: "351", country: "Portugal" },
-    { id: 'nl', code: "31", country: "Netherlands" },
-    { id: 'be', code: "32", country: "Belgium" },
-    { id: 'at', code: "43", country: "Austria" },
-    { id: 'dk', code: "45", country: "Denmark" },
-    { id: 'fi', code: "358", country: "Finland" },
-    { id: 'gr', code: "30", country: "Greece" },
-    { id: 'ie', code: "353", country: "Ireland" },
-    { id: 'lu', code: "352", country: "Luxembourg" },
-    { id: 'se', code: "46", country: "Sweden" },
-    { id: 'pl', code: "48", country: "Poland" },
-    { id: 'cz', code: "420", country: "Czech Republic" },
-    { id: 'hu', code: "36", country: "Hungary" },
-    { id: 'ro', code: "40", country: "Romania" },
-    { id: 'bg', code: "359", country: "Bulgaria" },
-    { id: 'hr', code: "385", country: "Croatia" },
-    { id: 'ee', code: "372", country: "Estonia" },
-    { id: 'lv', code: "371", country: "Latvia" },
-    { id: 'lt', code: "370", country: "Lithuania" },
-    { id: 'si', code: "386", country: "Slovenia" },
-    { id: 'sk', code: "421", country: "Slovakia" },
-    { id: 'mt', code: "356", country: "Malta" },
-    { id: 'cy', code: "357", country: "Cyprus" },
-    { id: 'cn', code: "86", country: "China" },
-    { id: 'jp', code: "81", country: "Japan" },
-    { id: 'kr', code: "82", country: "South Korea" },
-    { id: 'in', code: "91", country: "India" },
-    { id: 'ru', code: "7", country: "Russia" },
-    { id: 'br', code: "55", country: "Brazil" },
-    { id: 'au', code: "61", country: "Australia" },
-    { id: 'mx', code: "52", country: "Mexico" },
-    { id: 'sg', code: "65", country: "Singapore" },
-    { id: 'ch', code: "41", country: "Switzerland" },
-    { id: 'no', code: "47", country: "Norway" },
-    { id: 'za', code: "27", country: "South Africa" },
-    { id: 'ae', code: "971", country: "UAE" },
-    { id: 'sa', code: "966", country: "Saudi Arabia" },
-    { id: 'eg', code: "20", country: "Egypt" },
-    { id: 'il', code: "972", country: "Israel" },
-    { id: 'tr', code: "90", country: "Turkey" },
-    { id: 'pk', code: "92", country: "Pakistan" },
-    { id: 'vn', code: "84", country: "Vietnam" },
-    { id: 'id', code: "62", country: "Indonesia" },
-    { id: 'my', code: "60", country: "Malaysia" },
-    { id: 'ph', code: "63", country: "Philippines" },
-    { id: 'th', code: "66", country: "Thailand" },
-    { id: 'ar', code: "54", country: "Argentina" },
-    { id: 'cl', code: "56", country: "Chile" },
-    { id: 'co', code: "57", country: "Colombia" }
-  ].sort((a, b) => a.code.localeCompare(b.code));
+  const languageContent: Record<Language, LanguageContent> = {
+    en: {
+      title: "Your Contact Details",
+      firstName: "First Name",
+      lastName: "Last Name",
+      email: "Email Address",
+      timeCommitment: {
+        question: "How much time can you dedicate to learning English each week?",
+        placeholder: "Select time commitment",
+        options: {
+          lessThan2: "Less than 2 hours",
+          twoToFour: "2-4 hours",
+          fourToSix: "4-6 hours",
+          moreThanSix: "More than 6 hours"
+        }
+      },
+      motivation: {
+        question: "What motivates you to improve your English?",
+        placeholder: "Select motivation",
+        options: {
+          work: "Work/Professional Development",
+          academic: "Academic Studies",
+          travel: "Travel",
+          personal: "Personal Interest",
+          other: "Other"
+        }
+      },
+      interests: {
+        question: "What topics interest you the most?",
+        placeholder: "Select interests",
+        options: {
+          business: "Business & Professional",
+          culture: "Culture & Entertainment",
+          science: "Science & Technology",
+          currentEvents: "Current Events",
+          other: "Other"
+        }
+      },
+      privacyNotice: "Linguaphone collects your personal details for internal purposes only, and doesn't share or sell your data to 3rd parties",
+      submitButton: "Accept & Continue",
+      videoButton: "Start with Sound"
+    },
+    fr: {
+      title: "Vos Coordonnées",
+      firstName: "Prénom",
+      lastName: "Nom de famille",
+      email: "Adresse e-mail",
+      timeCommitment: {
+        question: "Combien de temps pouvez-vous consacrer à l'apprentissage de l'anglais chaque semaine ?",
+        placeholder: "Sélectionnez votre disponibilité",
+        options: {
+          lessThan2: "Moins de 2 heures",
+          twoToFour: "2-4 heures",
+          fourToSix: "4-6 heures",
+          moreThanSix: "Plus de 6 heures"
+        }
+      },
+      motivation: {
+        question: "Qu'est-ce qui vous motive à améliorer votre anglais ?",
+        placeholder: "Sélectionnez votre motivation",
+        options: {
+          work: "Travail/Développement professionnel",
+          academic: "Études académiques",
+          travel: "Voyage",
+          personal: "Intérêt personnel",
+          other: "Autre"
+        }
+      },
+      interests: {
+        question: "Quels sujets vous intéressent le plus ?",
+        placeholder: "Sélectionnez vos intérêts",
+        options: {
+          business: "Affaires et professionnel",
+          culture: "Culture et divertissement",
+          science: "Science et technologie",
+          currentEvents: "Actualités",
+          other: "Autre"
+        }
+      },
+      privacyNotice: "Linguaphone collecte vos données personnelles à des fins internes uniquement et ne partage ni ne vend vos données à des tiers",
+      submitButton: "Accepter et Continuer",
+      videoButton: "Démarrer avec le son"
+    }
+  };
 
-  const countryCodeOptions = countryCodes.map(country => ({
-    id: country.id,
-    value: country.code,
-    label: `+${country.code} ${country.country}`
-  }));
+  const handleLanguageChange = async (language: Language) => {
+    setCurrentLanguage(language);
+    if (videoRef) {
+      try {
+        videoRef.pause();
+        videoRef.load();
+      } catch (error) {
+        console.error('Error handling video on language change:', error);
+      }
+    }
+    if (onLanguageChange) {
+      onLanguageChange(language);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -96,6 +201,14 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate only the fields that exist in the form
+    if (!formData.firstName || 
+        !formData.lastName || 
+        !formData.email) {
+      alert('Please fill in all required fields');
+      return;
+    }
     
     // Save to localStorage
     localStorage.setItem('contactDetails', JSON.stringify(formData));
@@ -107,50 +220,114 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
     onNext();
   };
 
-  const handlePlayVideo = () => {
-    if (videoRef) {
+  useEffect(() => {
+    const attemptAutoplay = async () => {
+      if (!videoRef) return;
+      
+      try {
+        videoRef.muted = false;
+        await videoRef.play();
+        setAutoplayFailed(false);
+      } catch (error) {
+        console.log('Unmuted autoplay failed:', error);
+        setAutoplayFailed(true);
+        
+        // Try muted playback as fallback
+        try {
+          videoRef.muted = true;
+          await videoRef.play();
+        } catch (secondError) {
+          console.error('Muted autoplay also failed:', secondError);
+        }
+      }
+    };
+
+    attemptAutoplay();
+  }, [videoRef]);
+
+  const handleStartWithSound = async () => {
+    if (!videoRef) return;
+    
+    try {
       videoRef.muted = false;
-      videoRef.play();
+      videoRef.currentTime = 0;
+      await videoRef.play();
+      setAutoplayFailed(false);
+    } catch (error) {
+      console.error('Manual play with sound failed:', error);
     }
   };
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
-      <h1 className="text-4xl font-bold text-center">Your Contact Details</h1>
-
       {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
+        {/* Language Toggle */}
+        <div className="flex justify-end mb-4 space-x-2">
+          <button 
+            onClick={() => handleLanguageChange('en')}
+            className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+          >
+            <Image
+              src="/gb-flag.png"
+              alt="English"
+              width={32}
+              height={24}
+              className="rounded shadow-sm"
+            />
+          </button>
+          <button 
+            onClick={() => handleLanguageChange('fr')}
+            className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+          >
+            <Image
+              src="/fr-flag.png"
+              alt="Français"
+              width={32}
+              height={24}
+              className="rounded shadow-sm"
+            />
+          </button>
+        </div>
+
+        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[currentLanguage].title}</h1>
+        
         <div className="w-full flex flex-col items-center">
           <video
             ref={(el) => setVideoRef(el)}
-            src="https://justindonlon.com/wp-content/uploads/2024/11/ContactDetails.mp4"
-            controls
+            src={currentLanguage === 'en' 
+              ? "https://justindonlon.com/wp-content/uploads/2025/01/ContactDetails3.mp4"
+              : "https://justindonlon.com/wp-content/uploads/2025/01/FR-ContactDetails2.mp4"
+            }
             playsInline
+            autoPlay
+            controls
+            muted={false}
             className="rounded-lg"
             width="100%"
           >
             Your browser does not support the video tag.
           </video>
           
-          <button 
-            onClick={handlePlayVideo}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
-          >
-            <span>▶️</span> Play Video
-          </button>
+          {autoplayFailed && (
+            <button 
+              onClick={handleStartWithSound}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+            >
+              <span>🔊</span> {languageContent[currentLanguage].videoButton}
+            </button>
+          )}
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="w-full">
-        {/* Forms Container - Side by Side */}
-        <div className="w-full max-w-3xl mx-auto flex gap-6">
-          {/* Left Form - Contact Details */}
-          <div className="flex-1 bg-white rounded-lg shadow-lg p-6">
-            <div className="space-y-4">
+        <div className="w-full max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-6">
+          <div className="space-y-6">
+            {/* Name Fields */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName" className="flex items-center">
-                  First Name 
-                  <span className="ml-2 text-sm text-gray-500 italic">(Prénom)</span>
+                <Label htmlFor="firstName">
+                  {languageContent[currentLanguage].firstName}
                 </Label>
                 <Input
                   id="firstName"
@@ -158,14 +335,12 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
                   value={formData.firstName}
                   onChange={handleChange}
                   required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
+                  className="border-2 border-gray-700 rounded-md p-2 w-full"
                 />
               </div>
-
               <div>
-                <Label htmlFor="lastName" className="flex items-center">
-                  Last Name
-                  <span className="ml-2 text-sm text-gray-500 italic">(Nom de famille)</span>
+                <Label htmlFor="lastName">
+                  {languageContent[currentLanguage].lastName}
                 </Label>
                 <Input
                   id="lastName"
@@ -173,134 +348,42 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
                   value={formData.lastName}
                   onChange={handleChange}
                   required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email" className="flex items-center">
-                  Email
-                  <span className="ml-2 text-sm text-gray-500 italic">(Courriel)</span>
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phoneNumber" className="flex items-center">
-                  Phone Number
-                  <span className="ml-2 text-sm text-gray-500 italic">(Numéro de téléphone)</span>
-                </Label>
-                <div className="flex gap-2">
-                  <SelectWrapper
-                    options={countryCodeOptions}
-                    value={countryCode}
-                    onValueChange={setCountryCode}
-                    placeholder="Country"
-                    prefix="country"
-                    className="w-[140px]"
-                  />
-                  <Input
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    required
-                    placeholder="123456789"
-                    className="flex-1 border-2 border-gray-700 rounded-md p-2 focus:outline-none focus:border-blue-500 transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Form - Additional Details */}
-          <div className="flex-1 bg-white rounded-lg shadow-lg p-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="age" className="flex items-center">
-                  Age
-                  <span className="ml-2 text-sm text-gray-500 italic">(Âge)</span>
-                </Label>
-                <SelectWrapper
-                  options={[
-                    { id: 'under18', value: 'under 18', label: 'Under 18' },
-                    { id: '18-25', value: '18-25', label: '18 - 25' },
-                    { id: '25-45', value: '25-45', label: '25 - 45' },
-                    { id: '45plus', value: '45+', label: '45+' }
-                  ]}
-                  value={formData.age}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, age: value }))}
-                  placeholder="Select age range"
-                  prefix="age"
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="address" className="flex items-center">
-                  Full Address
-                  <span className="ml-2 text-sm text-gray-500 italic">(Adresse complète)</span>
-                </Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="company" className="flex items-center">
-                  Company
-                  <span className="ml-2 text-sm text-gray-500 italic">(Entreprise)</span>
-                </Label>
-                <Input
-                  id="company"
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="jobTitle" className="flex items-center">
-                  Job Title
-                  <span className="ml-2 text-sm text-gray-500 italic">(Titre du poste)</span>
-                </Label>
-                <Input
-                  id="jobTitle"
-                  name="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={handleChange}
-                  required
-                  className="border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
+                  className="border-2 border-gray-700 rounded-md p-2 w-full"
                 />
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Submit Button */}
-        <div className="mt-8 flex justify-center">
-          <Button 
-            type="submit"
-            className="w-full max-w-3xl bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
-          >
-            Next
-          </Button>
+            {/* Email Field */}
+            <div>
+              <Label htmlFor="email">
+                {languageContent[currentLanguage].email}
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="border-2 border-gray-700 rounded-md p-2 w-full"
+              />
+            </div>
+          </div>
+
+          {/* Privacy notice and submit button */}
+          <div className="mt-8 space-y-4">
+            <p className="text-sm text-gray-600 text-center">
+              {languageContent[currentLanguage].privacyNotice}
+            </p>
+            <div className="flex justify-center">
+              <Button 
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full"
+              >
+                {languageContent[currentLanguage].submitButton}
+              </Button>
+            </div>
+          </div>
         </div>
       </form>
     </div>
