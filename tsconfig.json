@@ -25,9 +25,11 @@
     "paths": {
       "@/*": [
         "./*"
-      ]
+      ],
+      "@/lib/*": ["./app/lib/*"]
     },
-    "strictNullChecks": true
+    "strictNullChecks": true,
+    "baseUrl": "."
   },
   "include": [
     "next-env.d.ts",

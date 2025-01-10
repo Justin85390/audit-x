@@ -25,19 +25,23 @@ export function SelectWrapper({
 }: SelectWrapperProps) {
   return (
     <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={className} aria-label={placeholder}>
+      <SelectTrigger 
+        className={`focus:ring-2 focus:ring-offset-2 focus:ring-primary ${className}`} 
+        aria-label={placeholder}
+      >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent 
-        className="max-h-[200px] overflow-y-auto bg-white"
+        className="max-h-[200px] overflow-y-auto bg-white rounded-md shadow-lg"
         position="popper"
         sideOffset={5}
+        align="center"
       >
         {options.map((option) => (
           <SelectItem
             key={`${prefix}-${option.id}`}
             value={option.value}
-            className="hover:bg-gray-100"
+            className="hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
           >
             {option.label}
           </SelectItem>
