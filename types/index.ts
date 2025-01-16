@@ -1,37 +1,34 @@
 export type Language = 'en' | 'fr';
 
 export interface UserData {
-  contactDetails?: {
-    firstName: string;
-    lastName: string;
+  contactDetails: {
+    name: string;
     email: string;
-    phoneNumber?: string;
-    age?: string;
-    company?: string;
-    jobTitle?: string;
-    address?: string;
   };
-  learnerData?: {
+  learnerData: {
     timeToLearn: string;
-    motivation: string;
-    interests: string;
-    device: string;
-    contentType: string;
-    classroomFormat: string;
+    motivation: string[];
+    interests: string[];
+    device: string[];
+    contentType: string[];
+    classroomFormat: string[];
   };
-  speakingData?: {
-    transcription: string;
+  speakingData: {
+    transcripts: Array<{
+      text: string;
+      timestamp: string;
+    }>;
+    timestamp: string;
   };
-  opinionData?: {
+  opinionData: {
     transcription: string;
     analysis: string;
+    speechAceAnalysis: any;
+    timestamp: string;
   };
-  listeningScore?: number;
-  readingScore?: number;
-  writingData?: {
-    email: string;
-  };
-  needsAnalysis?: string[];
+  listeningScore: number;
+  readingScore: number;
+  writingScore: number;
 }
 
 export type UpdateUserDataFunction = (key: string, value: any) => void;

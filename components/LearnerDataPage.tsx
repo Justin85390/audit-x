@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SelectWrapper } from "@/components/ui/select-wrapper"
 import { supabase } from '@/lib/supabase';
+import { UserData, UpdateUserDataFunction } from '@/types';
 
 type Language = 'en' | 'fr';
 
@@ -71,15 +72,17 @@ interface FormState {
   classroomFormat: string[];
 }
 
+interface LearnerDataPageProps {
+  onNext: () => void;
+  updateUserData: UpdateUserDataFunction;
+  onLanguageChange?: (language: Language) => void;
+}
+
 export default function LearnerDataPage({ 
   onNext,
   updateUserData,
   onLanguageChange
-}: {
-  onNext: () => void;
-  updateUserData: (key: string, data: any) => void;
-  onLanguageChange?: (language: Language) => void;
-}) {
+}: LearnerDataPageProps) {
   const [currentForm, setCurrentForm] = useState<1 | 2>(1);
   const [formData, setFormData] = useState({
     timeToLearn: "",
@@ -189,16 +192,13 @@ export default function LearnerDataPage({
     attemptAutoplay();
   }, [videoRef]);
 
-  const handleStartWithSound = async () => {
-    if (!videoRef) return;
-    
-    try {
+  const handleStartWithSound = () => {
+    if (videoRef) {
       videoRef.muted = false;
-      videoRef.currentTime = 0;
-      await videoRef.play();
+      videoRef.play().catch(error => {
+        console.error('Error playing video:', error);
+      });
       setAutoplayFailed(false);
-    } catch (error) {
-      console.error('Manual play with sound failed:', error);
     }
   };
 
@@ -391,12 +391,12 @@ export default function LearnerDataPage({
 
       // Create the learner data object with correct types
       const learnerData = {
-        timeToLearn: formData.timeToLearn,
-        motivation: formData.motivation || [],
-        interests: formData.interests || [],
-        device: formData.device || [],
-        contentType: formData.contentType || [],
-        classroomFormat: formData.classroomFormat || []
+        timeToLearn: formData.timeToLearn || '',
+        motivation: Array.isArray(formData.motivation) ? formData.motivation : [],
+        interests: Array.isArray(formData.interests) ? formData.interests : [],
+        device: Array.isArray(formData.device) ? formData.device : [],
+        contentType: Array.isArray(formData.contentType) ? formData.contentType : [],
+        classroomFormat: Array.isArray(formData.classroomFormat) ? formData.classroomFormat : []
       };
 
       // Save to Supabase

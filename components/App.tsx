@@ -25,35 +25,33 @@ interface LearnerData {
 // Define the correct interface for UserData
 interface UserData {
   contactDetails: {
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
-    phoneNumber: string;
-    age: string;
-    company: string;
-    jobTitle: string;
-    address: string;
   };
   learnerData: {
     timeToLearn: string;
-    motivation: string;
-    interests: string;
-    device: string;
-    contentType: string;
-    classroomFormat: string;
+    motivation: string[];
+    interests: string[];
+    device: string[];
+    contentType: string[];
+    classroomFormat: string[];
   };
   speakingData: {
-    transcription: string;
+    transcripts: Array<{
+      text: string;
+      timestamp: string;
+    }>;
+    timestamp: string;
   };
   opinionData: {
     transcription: string;
     analysis: string;
+    speechAceAnalysis: any;
+    timestamp: string;
   };
   listeningScore: number;
   readingScore: number;
-  writingData: {
-    email: string;
-  };
+  writingScore: number;
 }
 
 // Type for the update function
@@ -67,41 +65,37 @@ interface PageProps {
 interface ReportPageProps {
   userData: UserData;
   onNext: () => void;
+  updateUserData: UpdateUserDataFunction;
 }
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [userData, setUserData] = useState<UserData>({
     contactDetails: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phoneNumber: '',
-      age: '',
-      company: '',
-      jobTitle: '',
-      address: ''
+      name: '',
+      email: ''
     },
     learnerData: {
       timeToLearn: '',
-      motivation: '',
-      interests: '',
-      device: '',
-      contentType: '',
-      classroomFormat: ''
+      motivation: [],
+      interests: [],
+      device: [],
+      contentType: [],
+      classroomFormat: []
     },
     speakingData: {
-      transcription: ''
+      transcripts: [],
+      timestamp: ''
     },
     opinionData: {
       transcription: '',
-      analysis: ''
+      analysis: '',
+      speechAceAnalysis: null,
+      timestamp: ''
     },
     listeningScore: 0,
     readingScore: 0,
-    writingData: {
-      email: ''
-    }
+    writingScore: 0
   })
 
   const nextPage = () => setCurrentPage((prev) => prev + 1)
@@ -131,7 +125,8 @@ export default function App() {
       case 9:
         return <ReportPage 
           userData={userData}
-          onNext={nextPage} 
+          onNext={nextPage}
+          updateUserData={updateUserData}
         />
       default:
         return <div>Page not found</div>
