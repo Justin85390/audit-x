@@ -384,41 +384,38 @@ export default function LearnerDataPage({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    // Get the actual text from the "Other" text areas
-    const otherInterests = formData.get('otherInterests') as string;
-    const otherTopics = formData.get('otherTopics') as string;
-
-    // Get selected interests and topics
-    const selectedInterests = interests
-      .filter(interest => formData.get(`interest-${interest}`) === 'true')
-      .map(interest => interest === 'Other' ? otherInterests : interest);
-
-    const selectedTopics = topics
-      .filter(topic => formData.get(`topic-${topic}`) === 'true')
-      .map(topic => topic === 'Other' ? otherTopics : topic);
-
+    
     try {
       const userEmail = localStorage.getItem('userEmail');
       if (!userEmail) throw new Error('No user email found');
 
-      const { data, error } = await supabase
+      // Create the learner data object with correct types
+      const learnerData = {
+        timeToLearn: formData.timeToLearn,
+        motivation: formData.motivation || [],
+        interests: formData.interests || [],
+        device: formData.device || [],
+        contentType: formData.contentType || [],
+        classroomFormat: formData.classroomFormat || []
+      };
+
+      // Save to Supabase
+      const { error } = await supabase
         .from('users')
         .update({
-          interests: selectedInterests,
-          topics: selectedTopics
+          time_commitment: learnerData.timeToLearn,
+          motivation: learnerData.motivation,
+          interests: learnerData.interests,
+          device_preferences: learnerData.device,
+          content_type_preferences: learnerData.contentType,
+          classroom_format: learnerData.classroomFormat
         })
         .eq('email', userEmail);
 
       if (error) throw error;
 
-      // Update local state
-      updateUserData('learnerData', {
-        interests: selectedInterests,
-        topics: selectedTopics,
-        timestamp: new Date().toISOString()
-      });
+      // Update local state with typed data
+      updateUserData('learnerData', learnerData);
 
       onNext();
     } catch (error) {

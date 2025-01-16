@@ -103,9 +103,18 @@ export default function Home() {
   const updateUserData = (key: string, data: any) => {
     console.log('Updating user data:', key, data);
     setUserData(prev => {
-      const newData = { ...prev, [key]: data };
-      console.log('New userData state:', newData);
-      return newData;
+      if (key === 'learnerData') {
+        const learnerData = {
+          timeToLearn: data.timeToLearn || '',
+          motivation: Array.isArray(data.motivation) ? data.motivation : [],
+          interests: Array.isArray(data.interests) ? data.interests : [],
+          device: Array.isArray(data.device) ? data.device : [],
+          contentType: Array.isArray(data.contentType) ? data.contentType : [],
+          classroomFormat: Array.isArray(data.classroomFormat) ? data.classroomFormat : []
+        };
+        return { ...prev, [key]: learnerData };
+      }
+      return { ...prev, [key]: data };
     });
   };
 
@@ -160,4 +169,4 @@ export default function Home() {
       </main>
     </div>
   );
-}// Deployment trigger - Thu Jan 16 15:52:04 CET 2025
+}
