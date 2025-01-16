@@ -9,7 +9,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 
 type Language = 'en' | 'fr';
@@ -437,8 +436,8 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
             onClick={() => handleLanguageChange('en')}
             className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
-            <Image
-              src="/gb-flag.png"
+            <img
+              src="/images/flags/gb-flag.png"
               alt="English"
               width={32}
               height={24}
@@ -449,8 +448,8 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
             onClick={() => handleLanguageChange('fr')}
             className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
-            <Image
-              src="/fr-flag.png"
+            <img
+              src="/images/flags/fr-flag.png"
               alt="Français"
               width={32}
               height={24}

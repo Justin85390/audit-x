@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { OLIVER_SPEAKING_ASSESSMENT, SpeakingAssessmentData, constructOliverResponse } from '@/app/lib/oliver-instructions';
-import Image from 'next/image';
+import { Button } from "@/components/ui/button";
 import { supabase } from '@/lib/supabase';
 
 type Language = 'en' | 'fr';
@@ -303,13 +303,25 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
             onClick={() => handleLanguageChange('en')}
             className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
-            <Image src="/gb-flag.png" alt="English" width={32} height={24} className="rounded shadow-sm" />
+            <img
+              src="/images/flags/gb-flag.png"
+              alt="English"
+              width={32}
+              height={24}
+              className="rounded shadow-sm"
+            />
           </button>
           <button 
             onClick={() => handleLanguageChange('fr')}
             className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
-            <Image src="/fr-flag.png" alt="Français" width={32} height={24} className="rounded shadow-sm" />
+            <img
+              src="/images/flags/fr-flag.png"
+              alt="Français"
+              width={32}
+              height={24}
+              className="rounded shadow-sm"
+            />
           </button>
         </div>
 

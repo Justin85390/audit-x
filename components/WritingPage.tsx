@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
-import Image from 'next/image';
+import React, { useState, useRef, useEffect } from 'react';
+import { Button } from "@/components/ui/button";
 import { supabase } from '../lib/supabase';
 
 interface WritingPageProps {
@@ -285,7 +285,7 @@ ${emailText}`,
           className="text-blue-500 hover:text-blue-700 flex items-center gap-2"
         >
           <span>Afficher les instructions en français</span>
-          <Image src="/fr-flag.png" alt="Français" width={24} height={18} className="rounded" />
+          <img src="/fr-flag.png" alt="Français" width={24} height={18} className="rounded" />
         </button>
       </div>
 

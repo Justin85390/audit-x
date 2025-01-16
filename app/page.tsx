@@ -15,79 +15,61 @@ import ReportPage from '@/components/ReportPage';
 import NeedsAnalysisPage from '@/components/NeedsAnalysisPage';
 
 interface UserData {
-  contactDetails: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phoneNumber: string;
-    age: string;
-    company: string;
-    jobTitle: string;
-    address: string;
+  contactDetails?: {
+    name?: string;
+    email?: string;
   };
-  learnerData: {
-    timeToLearn: string;
-    motivation: string;
-    interests: string;
-    device: string;
-    contentType: string;
-    classroomFormat: string;
+  learnerData?: {
+    timeToLearn?: string;
+    motivation?: string[];
+    interests?: string[];
+    device?: string[];
+    contentType?: string[];
+    classroomFormat?: string[];
   };
-  speakingData: {
-    transcription: string;
+  speakingData?: {
+    transcripts?: any;
+    timestamp?: string;
   };
-  opinionData: {
-    transcription: string;
-    analysis: string;
+  opinionData?: {
+    transcription?: string;
+    analysis?: string;
+    speechAceAnalysis?: any;
+    timestamp?: string;
   };
-  listeningScore: number;
-  readingScore: number;
-  writingData: {
-    to: string;
-    subject: string;
-    email: string;
-    analysis: string;
-    timestamp: string;
-  };
+  listeningScore?: number;
+  readingScore?: number;
+  writingScore?: number;
 }
 
 export default function Home() {
   const [currentPage, setCurrentPage] = useState('welcome');
   const [userData, setUserData] = useState<UserData>({
     contactDetails: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phoneNumber: '',
-      age: '',
-      company: '',
-      jobTitle: '',
-      address: ''
+      name: '',
+      email: ''
     },
     learnerData: {
       timeToLearn: '',
-      motivation: '',
-      interests: '',
-      device: '',
-      contentType: '',
-      classroomFormat: ''
+      motivation: [],
+      interests: [],
+      device: [],
+      contentType: [],
+      classroomFormat: []
     },
     speakingData: {
-      transcription: ''
+      transcripts: [],
+      timestamp: ''
     },
     opinionData: {
       transcription: '',
-      analysis: ''
+      analysis: '',
+      speechAceAnalysis: null,
+      timestamp: ''
     },
     listeningScore: 0,
     readingScore: 0,
-    writingData: {
-      to: '',
-      subject: '',
-      email: '',
-      analysis: '',
-      timestamp: ''
-    }
+    writingScore: 0
   });
 
   const nextPage = () => setCurrentPage((prev) => {
@@ -124,6 +106,10 @@ export default function Home() {
     });
   };
 
+  const handleNext = () => {
+    console.log('Audit completed:', userData);
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case 'welcome':
@@ -154,7 +140,11 @@ export default function Home() {
       case 'readingComprehension':
         return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
       case 'report':
-        return <ReportPage userData={userData} onNext={nextPage} />;
+        return <ReportPage 
+          onNext={handleNext}
+          updateUserData={updateUserData}
+          userData={userData}
+        />;
       default:
         return <div>Page not found</div>;
     }
