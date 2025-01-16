@@ -15,31 +15,34 @@ import ReportPage from '@/components/ReportPage';
 import NeedsAnalysisPage from '@/components/NeedsAnalysisPage';
 
 interface UserData {
-  contactDetails?: {
-    name?: string;
-    email?: string;
+  contactDetails: {
+    name: string;
+    email: string;
   };
-  learnerData?: {
-    timeToLearn?: string;
-    motivation?: string[];
-    interests?: string[];
-    device?: string[];
-    contentType?: string[];
-    classroomFormat?: string[];
+  learnerData: {
+    timeToLearn: string;
+    motivation: string[];
+    interests: string[];
+    device: string[];
+    contentType: string[];
+    classroomFormat: string[];
   };
-  speakingData?: {
-    transcripts?: any;
-    timestamp?: string;
+  speakingData: {
+    transcripts: Array<{
+      text: string;
+      timestamp: string;
+    }>;
+    timestamp: string;
   };
-  opinionData?: {
-    transcription?: string;
-    analysis?: string;
-    speechAceAnalysis?: any;
-    timestamp?: string;
+  opinionData: {
+    transcription: string;
+    analysis: string;
+    speechAceAnalysis: any;
+    timestamp: string;
   };
-  listeningScore?: number;
-  readingScore?: number;
-  writingScore?: number;
+  listeningScore: number;
+  readingScore: number;
+  writingScore: number;
 }
 
 export default function Home() {
