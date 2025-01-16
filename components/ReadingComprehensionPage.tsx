@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 
 interface ReadingComprehensionPageProps {
   onNext: () => void;
@@ -105,20 +106,71 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
     );
   };
 
-  const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
+  const handleAnswerSelect = (questionIndex: number, answer: number) => {
     setSelectedAnswers(prev => ({
       ...prev,
-      [questionIndex]: answerIndex
+      [questionIndex]: answer
     }));
   };
 
-  const getCEFRLevel = (score: number): string => {
-    if (score >= 11) return 'C1';     // 92-100%
-    if (score >= 9) return 'B2';      // 75-91%
-    if (score >= 7) return 'B1';      // 58-74%
-    if (score >= 5) return 'B1-A2';   // 42-57%
-    if (score >= 3) return 'A2';      // 25-41%
-    return 'A2-A1';                   // 0-24%
+  const handleSubmit = async () => {
+    // Calculate final score
+    let finalScore = 0;
+    let correctCount = 0;
+
+    questions.forEach((question, index) => {
+      const selectedAnswer = selectedAnswers[index];
+      if (selectedAnswer === question.correctAnswer) {
+        finalScore += question.points;
+        correctCount++;
+      } else if (selectedAnswer === question.partialCredit) {
+        finalScore += question.points / 2;
+      }
+    });
+
+    const totalPossiblePoints = questions.reduce((total, q) => total + q.points, 0);
+    const percentageScore = Math.round((finalScore / totalPossiblePoints) * 100);
+
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      console.log('Saving reading score to database:', percentageScore);
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          reading_score: percentageScore
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Reading score saved successfully');
+
+      // Update local state
+      updateUserData('readingScore', percentageScore);
+      updateUserData('readingCorrectAnswers', correctCount);
+      updateUserData('readingAssessment', {
+        totalScore: percentageScore,
+        correctAnswers: correctCount,
+        possibleScore: totalPossiblePoints,
+        percentageScore,
+        cefrLevel: getCefrLevel(percentageScore),
+        timestamp: new Date().toISOString()
+      });
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving reading score:', error);
+    }
+  };
+
+  const getCefrLevel = (score: number): string => {
+    if (score >= 90) return 'C1-C2';
+    if (score >= 70) return 'B2';
+    if (score >= 50) return 'B1';
+    if (score >= 30) return 'A2';
+    return 'A1';
   };
 
   const handleVideoRef = (el: HTMLVideoElement | null) => {
@@ -144,34 +196,6 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
       videoRef.play().catch(e => console.log('Video play failed:', e));
       setVideoStarted(true);
     }
-  };
-
-  const handleSubmit = () => {
-    let newScore = 0;
-    let correctCount = 0;
-
-    questions.forEach((question, index) => {
-      const selectedAnswer = selectedAnswers[index];
-      if (selectedAnswer === question.correctAnswer) {
-        newScore += question.points;
-        correctCount++;
-      } else if (selectedAnswer === question.partialCredit) {
-        newScore += question.points / 2;
-        correctCount += 0.5;
-      }
-    });
-
-    // Update the score and correct answers
-    setScore(newScore);
-    setCorrectAnswers(correctCount);
-
-    // Save the results
-    updateUserData('readingScore', newScore);
-    updateUserData('readingLevel', getCEFRLevel(newScore));
-    updateUserData('readingCorrectAnswers', correctCount);
-
-    // Move to next section
-    onNext();
   };
 
   return (

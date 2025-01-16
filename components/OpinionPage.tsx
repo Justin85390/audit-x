@@ -3,6 +3,7 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
 import { Button } from "./ui/button";
 import { UserContext } from '../context/UserContext';
+import { supabase } from '@/lib/supabase';
 
 type Timeout = ReturnType<typeof setTimeout>;
 
@@ -95,23 +96,47 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
     }
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (!mediaRecorderRef.current) return;
     
+    setIsLoading(true);
     const mediaRecorder = mediaRecorderRef.current;
     
-    mediaRecorder.onstop = () => {
+    // Set up onstop handler before stopping
+    mediaRecorder.onstop = async () => {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const url = URL.createObjectURL(audioBlob);
-      setAudioUrl(url);
-      setShowReviewStep(true);
-      
-      // Stop all tracks
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      try {
+        // Convert to base64 first
+        const base64Audio = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(audioBlob);
+        });
+
+        // Send base64 audio for transcription
+        const response = await fetch('/api/transcribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audio: base64Audio })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(`Error: ${data.error}`);
+        if (!data.transcription) throw new Error(`No transcription in response`);
+
+        await handleRecordingComplete(data.transcription, audioBlob);
+        
+        // Stop all tracks
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        
+      } catch (error) {
+        console.error('Transcription error:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     stopTimer();
-    setIsRecording(false);
     mediaRecorder.stop();
   };
 
@@ -140,8 +165,8 @@ Speech sample to analyze: "${transcription}"
 Please format your response with these exact headings:
 Ability to Understand:
 Ability to Communicate:
-3. CEFR level:
-4. Key strengths`
+CEFR level:
+Key strengths`
         }),
       });
 
@@ -164,11 +189,39 @@ Ability to Communicate:
     try {
       setIsLoading(true);
       console.log('1. Got transcription:', transcription);
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
 
       // Run both analyses in parallel
       const [openAIResult, speechAceResult] = await Promise.all([
         // OpenAI Analysis
-        analyzeWithOpenAI(transcription),
+        (async () => {
+          console.log('2. Starting OpenAI analysis...');
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: transcription,
+              prompt: `Please analyze the following English speech sample in terms of:
+
+1. Ability to Understand: Evaluate how well the speaker understands and responds to the topic.
+2. Ability to Communicate: Assess fluency, clarity, and effectiveness of expression.
+3. CEFR level: Determine the speaker's CEFR level (A1-C2) based on vocabulary, grammar, and overall communication.
+4. Key strengths and areas for improvement.
+
+Speech sample to analyze: "${transcription}"
+
+Please format your response with these exact headings:
+Ability to Understand:
+Ability to Communicate:
+CEFR level:
+Key strengths`
+            })
+          });
+          const data = await response.json();
+          console.log('3. OpenAI analysis complete:', data);
+          return data;
+        })(),
 
         // SpeechAce Analysis
         (async () => {
@@ -184,13 +237,29 @@ Ability to Communicate:
           const data = await response.json();
           console.log('5. SpeechAce analysis complete:', data);
           return data;
-        })().catch(error => {
-          console.error('SpeechAce analysis failed:', error);
-          return null; // Return null if SpeechAce fails
-        })
+        })()
       ]);
 
-      // Update user data with both analyses
+      // Save to Supabase FIRST
+      console.log('6. Saving to Supabase...');
+      const { data: supabaseData, error: supabaseError } = await supabase
+        .from('users')
+        .update({
+          speaking_opinion_transcript: transcription,
+          speaking_openai_analysis: openAIResult.analysis,
+          speaking_speechace_analysis: JSON.stringify(speechAceResult)
+        })
+        .eq('email', userEmail)
+        .select();
+
+      if (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        throw supabaseError;
+      }
+
+      console.log('7. Supabase save successful:', supabaseData);
+
+      // Then update local state
       const newData = {
         transcription,
         analysis: openAIResult.analysis,
@@ -198,17 +267,11 @@ Ability to Communicate:
         timestamp: new Date().toISOString()
       };
 
-      console.log('OpinionPage - Full speechAceResult:', speechAceResult);
-      console.log('OpinionPage - newData being saved:', newData);
-
       updateUserData('opinionData', newData);
-      console.log('7. Moving to next page');
-      
       onNext();
 
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error processing your answer. Please try again.');
+      console.error('Error in handleRecordingComplete:', error);
     } finally {
       setIsLoading(false);
     }
@@ -396,7 +459,68 @@ Ability to Communicate:
                     Re-Record Answer
                   </button>
                   <button
-                    onClick={handleSubmit}
+                    onClick={async () => {
+                      try {
+                        setIsLoading(true);
+                        const userEmail = localStorage.getItem('userEmail');
+                        if (!userEmail) throw new Error('No user email found');
+
+                        // 1. First get transcription (like in SpeakingPage)
+                        const formData = new FormData();
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                        formData.append('file', audioBlob);
+                        
+                        console.log('1. Sending audio for transcription...');
+                        const transcribeResponse = await fetch('/api/transcribe', {
+                          method: 'POST',
+                          body: formData
+                        });
+                        const transcribeData = await transcribeResponse.json();
+                        console.log('2. Transcription result:', transcribeData);
+
+                        if (transcribeData.error) throw new Error(transcribeData.error);
+
+                        // 2. Then get OpenAI analysis
+                        console.log('3. Getting OpenAI analysis...');
+                        const openAIResponse = await fetch('/api/analyze', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            prompt: transcribeData.transcription,
+                            type: 'opinion'
+                          })
+                        });
+                        const openAIData = await openAIResponse.json();
+                        console.log('4. OpenAI result:', openAIData);
+
+                        // 3. Finally get SpeechAce analysis
+                        console.log('5. Getting SpeechAce analysis...');
+                        const speechaceResponse = await fetch('/api/speechace', {
+                          method: 'POST',
+                          body: formData
+                        });
+                        const speechaceData = await speechaceResponse.json();
+                        console.log('6. SpeechAce result:', speechaceData);
+
+                        // 4. Save everything
+                        const { data, error } = await supabase
+                          .from('users')
+                          .update({
+                            speaking_opinion_transcript: transcribeData.transcription || '',
+                            speaking_openai_analysis: openAIData.analysis || '',
+                            speaking_speechace_analysis: JSON.stringify(speechaceData) || ''
+                          })
+                          .eq('email', userEmail);
+
+                        if (error) throw error;
+                        console.log('7. Database save successful');
+                        onNext();
+                      } catch (error) {
+                        console.error('Error in opinion submission:', error);
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
                     disabled={isLoading}
                     className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full"
                   >

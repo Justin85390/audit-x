@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { OLIVER_SPEAKING_ASSESSMENT, SpeakingAssessmentData, constructOliverResponse } from '@/app/lib/oliver-instructions';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 type Language = 'en' | 'fr';
 
@@ -247,20 +248,48 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
   };
 
   const handleSaveTranscripts = async () => {
-    setIsSaving(true);
+    console.log('Save function triggered');
     try {
-      // Save the transcripts to your backend or state management
-      await updateUserData('speakingData', {
-        transcripts: transcriptHistory,
-        timestamp: new Date().toISOString()
+      const userEmail = localStorage.getItem('userEmail');
+      console.log('User email:', userEmail);
+      console.log('User email:', userEmail); // Debug email
+
+      if (!userEmail) throw new Error('No user email found');
+
+      // Debug transcript history
+      console.log('Full transcript history:', transcriptHistory);
+      console.log('Current language:', currentLanguage);
+
+      // Get just the text content
+      const transcriptText = transcriptHistory[currentLanguage]
+        ?.map(item => item.text)
+        .join(' ');
+
+      console.log('Saving transcript:', transcriptText); // Debug final text
+
+      // Debug Supabase call
+      console.log('Sending to Supabase:', {
+        email: userEmail,
+        speaking_difficulties_transcript: transcriptText
       });
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          speaking_difficulties_transcript: transcriptText
+        })
+        .eq('email', userEmail)
+        .select();
+
+      console.log('Supabase response:', { data, error }); // Debug response
+
+      if (error) throw error;
+      
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000); // Reset success state after 2 seconds
+      onNext();
     } catch (error) {
-      console.error('Error saving transcripts:', error);
-      alert(currentLanguage === 'en' ? 'Error saving changes' : 'Erreur lors de l\'enregistrement');
-    } finally {
-      setIsSaving(false);
+      console.error('Error saving speaking transcript:', error);
+      setSaveSuccess(false);
     }
   };
 
@@ -462,7 +491,32 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
           {/* Continue to Part 2 button in a separate row */}
           <div className="flex flex-col items-center gap-2">
             <button
-              onClick={onNext}
+              onClick={async () => {
+                try {
+                  const userEmail = localStorage.getItem('userEmail');
+                  if (!userEmail) throw new Error('No user email found');
+
+                  // Get the latest transcript
+                  const transcriptText = transcriptHistory[currentLanguage]
+                    ?.map(item => item.text)
+                    .join(' ');
+
+                  // Save to database
+                  const { error } = await supabase
+                    .from('users')
+                    .update({
+                      speaking_difficulties_transcript: transcriptText
+                    })
+                    .eq('email', userEmail);
+
+                  if (error) throw error;
+
+                  // Continue to next page
+                  onNext();
+                } catch (error) {
+                  console.error('Error saving transcript:', error);
+                }
+              }}
               className="px-8 py-3 rounded-full font-bold bg-green-500 hover:bg-green-600 text-white 
                          shadow-lg hover:shadow-xl transition-all duration-200 
                          flex items-center justify-center gap-2"

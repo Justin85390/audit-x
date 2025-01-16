@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from "react"
+import { supabase } from '@/lib/supabase';
 
 interface ListeningComprehensionPageProps {
   onNext: () => void;
@@ -19,6 +20,13 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
   const [showInstructions, setShowInstructions] = useState(false);
   const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number | null }>({});
+  const [userAnswers, setUserAnswers] = useState<string[]>([]);
+  const correctAnswersList = [
+    "answer1", // Replace with your actual correct answers
+    "answer2",
+    // ... rest of your answers
+  ];
+  const [isTestComplete, setIsTestComplete] = useState(false);
 
   const questions = [
     {
@@ -103,11 +111,63 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
     );
   };
 
-  const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
+  const handleAnswerSelect = (questionIndex: number, answer: number) => {
     setSelectedAnswers(prev => ({
       ...prev,
-      [questionIndex]: answerIndex
+      [questionIndex]: answer
     }));
+  };
+
+  const handleSubmit = async () => {
+    // Calculate final score
+    let finalScore = 0;
+    let correctCount = 0;
+
+    questions.forEach((question, index) => {
+      const selectedAnswer = selectedAnswers[index];
+      if (selectedAnswer === question.correctAnswer) {
+        finalScore += question.points;
+        correctCount++;
+      } else if (selectedAnswer === question.partialCredit) {
+        finalScore += question.points / 2;
+      }
+    });
+
+    const totalPossiblePoints = questions.reduce((total, q) => total + q.points, 0);
+    const percentageScore = Math.round((finalScore / totalPossiblePoints) * 100);
+
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      console.log('Saving listening score to database:', percentageScore);
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          listening_score: percentageScore
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Listening score saved successfully');
+
+      // Update local state
+      updateUserData('listeningScore', percentageScore);
+      updateUserData('listeningCorrectAnswers', correctCount);
+      updateUserData('listeningAssessment', {
+        totalScore: percentageScore,
+        correctAnswers: correctCount,
+        possibleScore: totalPossiblePoints,
+        percentageScore,
+        cefrLevel: getCefrLevel(percentageScore),
+        timestamp: new Date().toISOString()
+      });
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving listening score:', error);
+    }
   };
 
   const getCEFRLevel = (score: number): string => {
@@ -134,79 +194,6 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
     
     // No points for other answers
     return 0;
-  };
-
-  const handleSubmit = () => {
-    let totalScore = 0;
-    let correctAnswers = 0;
-    let questionBreakdown: { [key: string]: number } = {
-      main_idea: 0,
-      specific_detail: 0,
-      inference: 0
-    };
-
-    questions.forEach((question, index) => {
-      const selectedAnswer = selectedAnswers[index];
-      if (selectedAnswer !== null) {
-        const points = getPartialCredit(question.type, selectedAnswer, index);
-        totalScore += points;
-        
-        if (points === 2) {
-          correctAnswers += 1;
-          questionBreakdown[question.type] += 1;
-        } else if (points === 1) {
-          questionBreakdown[question.type] += 0.5; // Count partial credit as half correct
-        }
-      }
-    });
-
-    const cefrLevel = getCEFRLevel(totalScore);
-    const percentageScore = (totalScore / (questions.length * 2)) * 100;
-
-    // Prepare detailed assessment data
-    const assessmentData = {
-      totalScore,
-      correctAnswers,
-      possibleScore: questions.length * 2,
-      percentageScore,
-      cefrLevel,
-      questionBreakdown,
-      breakdown: {
-        mainIdea: (questionBreakdown.main_idea / 1) * 100, // 1 main idea question
-        specificDetails: (questionBreakdown.specific_detail / 3) * 100, // 3 specific detail questions
-        inference: (questionBreakdown.inference / 2) * 100, // 2 inference questions
-      },
-      qualitativeAnalysis: {
-        strengths: [] as string[],
-        areasForImprovement: [] as string[]
-      }
-    };
-
-    // Add qualitative analysis
-    if (assessmentData.breakdown.mainIdea >= 100) {
-      assessmentData.qualitativeAnalysis.strengths.push("Strong grasp of main ideas");
-    } else {
-      assessmentData.qualitativeAnalysis.areasForImprovement.push("Work on identifying main themes");
-    }
-
-    if (assessmentData.breakdown.specificDetails >= 75) {
-      assessmentData.qualitativeAnalysis.strengths.push("Good attention to detail");
-    } else {
-      assessmentData.qualitativeAnalysis.areasForImprovement.push("Practice active listening for specific information");
-    }
-
-    if (assessmentData.breakdown.inference >= 75) {
-      assessmentData.qualitativeAnalysis.strengths.push("Strong inferential understanding");
-    } else {
-      assessmentData.qualitativeAnalysis.areasForImprovement.push("Work on drawing conclusions from context");
-    }
-
-    // Update user data with comprehensive assessment
-    updateUserData('listeningScore', totalScore);
-    updateUserData('listeningCorrectAnswers', correctAnswers);
-    updateUserData('listeningAssessment', assessmentData);
-    
-    onNext();
   };
 
   const handleVideoRef = (el: HTMLVideoElement | null) => {
@@ -238,6 +225,132 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
     if (secondVideoRef.current && !hasSecondVideoPlayed) {
       secondVideoRef.current.play();
       setHasSecondVideoPlayed(true);
+    }
+  };
+
+  const handleFinishTest = async (score: number) => {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          listening_score: score
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Listening score saved:', score);
+
+      // Continue with existing functionality
+      onNext();
+    } catch (error) {
+      console.error('Error saving listening score:', error);
+    }
+  };
+
+  const handleSubmitAnswers = async () => {
+    // Calculate score based on answers
+    const correctAnswers = userAnswers.filter((answer, index) => 
+      answer === correctAnswersList[index]
+    ).length;
+    const totalScore = Math.round((correctAnswers / correctAnswersList.length) * 100);
+    
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          listening_score: totalScore
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Listening score saved to database:', totalScore);
+
+      // Update local state
+      updateUserData('listeningCorrectAnswers', correctAnswers);
+      updateUserData('listeningAssessment', {
+        totalScore,
+        correctAnswers,
+        possibleScore: correctAnswersList.length,
+        percentageScore: totalScore,
+        cefrLevel: getCefrLevel(totalScore),
+        timestamp: new Date().toISOString()
+      });
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving listening score:', error);
+    }
+  };
+
+  const getCefrLevel = (score: number): string => {
+    if (score >= 90) return 'C1-C2';
+    if (score >= 70) return 'B2';
+    if (score >= 50) return 'B1';
+    if (score >= 30) return 'A2';
+    return 'A1';
+  };
+
+  const handleQuestionSubmit = async (questionIndex: number, selectedAnswer: number) => {
+    const question = questions[questionIndex];
+    let points = 0;
+
+    if (selectedAnswer === question.correctAnswer) {
+      points = question.points;
+    } else if (selectedAnswer === question.partialCredit) {
+      points = question.points / 2;
+    }
+
+    // Update score
+    const newScore = score + points;
+    setScore(newScore);
+    
+    // Calculate total possible points
+    const totalPossiblePoints = questions.reduce((total, q) => total + q.points, 0);
+    
+    // Calculate percentage score
+    const percentageScore = Math.round((newScore / totalPossiblePoints) * 100);
+
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          listening_score: percentageScore
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Listening score saved to database:', percentageScore);
+
+      // Update local state
+      updateUserData('listeningScore', percentageScore);
+      updateUserData('listeningCorrectAnswers', correctAnswers);
+      updateUserData('listeningAssessment', {
+        totalScore: percentageScore,
+        correctAnswers,
+        possibleScore: totalPossiblePoints,
+        percentageScore,
+        cefrLevel: getCefrLevel(percentageScore),
+        timestamp: new Date().toISOString()
+      });
+
+      // If this was the last question
+      if (questionIndex === questions.length - 1) {
+        onNext();
+      }
+    } catch (error) {
+      console.error('Error saving listening score:', error);
     }
   };
 
@@ -281,7 +394,7 @@ export default function ListeningComprehensionPage({ onNext, updateUserData }: L
         >
           {showInstructions ? 'Masquer' : 'Afficher'} les instructions en français
           <span className="w-6 h-4 inline-flex items-center">
-            🇫🇷
+            🇷
           </span>
         </button>
 

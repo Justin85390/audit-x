@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 type Language = 'en' | 'fr';
 
@@ -377,13 +378,29 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
     }));
   };
 
-  const handleSubmit = () => {
-    const selectedNeedsList = Object.entries(selectedNeeds)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([need]) => need);
+  const handleSubmit = async () => {
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
 
-    updateUserData('needsAnalysis', selectedNeedsList);
-    onNext();
+      const selectedNeedsList = Object.entries(selectedNeeds)
+        .filter(([_, isSelected]) => isSelected)
+        .map(([need]) => need);
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          needs_analysis: selectedNeedsList
+        })
+        .eq('email', userEmail)
+        .select();
+
+      if (error) throw error;
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving needs analysis:', error);
+    }
   };
 
   const handleLanguageChange = async (language: Language) => {

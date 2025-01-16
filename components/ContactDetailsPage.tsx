@@ -1,87 +1,21 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SelectWrapper } from "@/components/ui/select-wrapper";
 import { Textarea } from "@/components/ui/textarea";
-import Image from 'next/image';
+import Image from 'next/legacy/image';
+import { Language, UserData, LanguageContent, FormData, UpdateUserDataFunction } from '@/types'
+import { supabase } from '@/lib/supabase';
 
 interface ContactDetailsPageProps {
   onNext: () => void;
-  updateUserData: (key: string, value: any) => void;
+  updateUserData: UpdateUserDataFunction;
   onLanguageChange?: (language: Language) => void;
+  onSave?: (data: any) => void;
 }
 
-type Language = 'en' | 'fr';
-
-interface LanguageContent {
-  title: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  timeCommitment: {
-    question: string;
-    placeholder: string;
-    options: {
-      lessThan2: string;
-      twoToFour: string;
-      fourToSix: string;
-      moreThanSix: string;
-    };
-  };
-  motivation: {
-    question: string;
-    placeholder: string;
-    options: {
-      work: string;
-      academic: string;
-      travel: string;
-      personal: string;
-      other: string;
-    };
-  };
-  interests: {
-    question: string;
-    placeholder: string;
-    options: {
-      business: string;
-      culture: string;
-      science: string;
-      currentEvents: string;
-      other: string;
-    };
-  };
-  privacyNotice: string;
-  submitButton: string;
-  videoButton: string;
-}
-
-type MotivationOption = 'work' | 'academic' | 'travel' | 'personal' | 'other';
-type InterestOption = 'business' | 'culture' | 'science' | 'current' | 'other';
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface SelectOptionWithValue<T = string> {
-  value: T;
-  label: string;
-}
-
-// Add this type to handle multi-select values properly
-type MultiSelectValue = string | string[];
-
-interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  timeCommitment: string;
-  motivation: string[];
-  interests: string[];
-}
-
-export default function ContactDetailsPage({ onNext, updateUserData, onLanguageChange }: ContactDetailsPageProps) {
+export default function ContactDetailsPage({ onNext, updateUserData }: ContactDetailsPageProps) {
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -190,34 +124,37 @@ export default function ContactDetailsPage({ onNext, updateUserData, onLanguageC
         console.error('Error handling video on language change:', error);
       }
     }
-    if (onLanguageChange) {
-      onLanguageChange(language);
-    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     
-    // Validate only the fields that exist in the form
-    if (!formData.firstName || 
-        !formData.lastName || 
-        !formData.email) {
-      alert('Please fill in all required fields');
-      return;
+    try {
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .upsert({
+          email: formData.email,
+          first_name: formData.firstName,
+          last_name: formData.lastName
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Store email in localStorage for subsequent pages
+      localStorage.setItem('userEmail', formData.email);
+      
+      // Continue with existing functionality
+      onNext();
+    } catch (error) {
+      console.error('Error saving contact details:', error);
     }
-    
-    // Save to localStorage
-    localStorage.setItem('contactDetails', JSON.stringify(formData));
-    
-    // Update parent state
-    updateUserData('contactDetails', formData);
-    
-    console.log('Contact Details saved:', formData);
-    onNext();
   };
 
   useEffect(() => {

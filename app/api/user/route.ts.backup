@@ -1,0 +1,100 @@
+import { supabase } from '@/app/lib/supabase'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json()
+    console.log('Received body:', body)
+    
+    // Validate input
+    if (!body.email) {
+      return NextResponse.json(
+        { error: 'Missing email' },
+        { status: 400 }
+      )
+    }
+
+    // First check if user exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select()
+      .eq('email', body.email)
+      .single()
+
+    console.log('Existing user:', existingUser)
+
+    // Now we can use existingUser in our validation
+    if (!existingUser && (!body.first_name || !body.last_name)) {
+      return NextResponse.json(
+        { error: 'Missing required fields for new user' },
+        { status: 400 }
+      )
+    }
+
+    // If user doesn't exist and we have first/last name, create new user
+    if (!existingUser && body.first_name && body.last_name) {
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          email: body.email,
+          first_name: body.first_name,
+          last_name: body.last_name
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Database error:', error)
+        return NextResponse.json(
+          { error: 'Database error' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(data)
+    }
+
+    // Otherwise update existing user
+    const { data, error } = await supabase
+      .from('users')
+      .update({
+        ...(body.first_name && { first_name: body.first_name }),
+        ...(body.last_name && { last_name: body.last_name }),
+        ...(body.speaking_difficulties_transcript && { 
+          speaking_difficulties_transcript: body.speaking_difficulties_transcript 
+        }),
+        ...(body.reading_score !== undefined && {
+          reading_score: body.reading_score
+        }),
+        ...(body.listening_score !== undefined && {
+          listening_score: body.listening_score
+        }),
+        ...(body.writing_submission && { 
+          writing_submission: body.writing_submission 
+        }),
+        ...(body.writing_openai_analysis && { 
+          writing_openai_analysis: body.writing_openai_analysis 
+        })
+      })
+      .eq('email', body.email)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Database error:', error)
+      return NextResponse.json(
+        { error: 'Database error' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(data)
+
+  } catch (error) {
+    console.error('Server error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+} 

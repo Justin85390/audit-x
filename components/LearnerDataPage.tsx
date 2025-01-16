@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { SelectWrapper } from "@/components/ui/select-wrapper"
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 type Language = 'en' | 'fr';
 
@@ -39,6 +40,36 @@ interface LanguageContent {
     first: string;
     second: string;
   };
+}
+
+const interests = [
+  'Business',
+  'Technology',
+  'Science',
+  'Arts',
+  'Travel',
+  'Sports',
+  'Other'
+];
+
+const topics = [
+  'Presentations',
+  'Meetings',
+  'Email Writing',
+  'Negotiations',
+  'Small Talk',
+  'Other'
+];
+
+interface FormState {
+  timeToLearn: string;
+  motivation: string[];
+  otherMotivation: string;
+  interests: string[];
+  otherInterests: string;
+  device: string[];
+  contentType: string[];
+  classroomFormat: string[];
 }
 
 export default function LearnerDataPage({ 
@@ -190,27 +221,57 @@ export default function LearnerDataPage({
     setCurrentForm(2);
   };
 
-  const handleSecondFormSubmit = (e: React.FormEvent) => {
+  const handleSecondFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Save second form data to localStorage
-    const secondFormData = {
-      device: formData.device,
-      contentType: formData.contentType,
-      classroomFormat: formData.classroomFormat
-    };
-    localStorage.setItem('technicalPreferences', JSON.stringify(secondFormData));
-    
-    // Combine both forms' data and update parent state
-    const combinedData = {
-      ...formData
-    };
-    
-    // Update parent state with all learner data
-    updateUserData('learnerData', combinedData);
-    
-    console.log('Learner Data saved:', combinedData);
-    onNext();
+
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Debug logs to see what we're getting
+      console.log('Raw form data:', formData);
+
+      // Create final arrays
+      const finalMotivation = formData.motivation.includes('Other')
+        ? [...formData.motivation.filter(m => m !== 'Other'), formData.otherMotivation]
+        : formData.motivation;
+
+      const finalInterests = formData.interests.includes('Other')
+        ? [...formData.interests.filter(i => i !== 'Other'), formData.otherInterests]
+        : formData.interests;
+
+      // Debug logs before save
+      console.log('Final arrays before save:', {
+        motivation: finalMotivation,
+        interests: finalInterests,
+        rawMotivation: formData.motivation,
+        rawInterests: formData.interests
+      });
+
+      // Save to Supabase
+      const { error } = await supabase
+        .from('users')
+        .update({
+          time_commitment: formData.timeToLearn,
+          motivation: finalMotivation,
+          interests: finalInterests,
+          device_preferences: formData.device,
+          content_type_preferences: formData.contentType,
+          classroom_format: formData.classroomFormat
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+
+      console.log('Saved to database:', {
+        motivation: finalMotivation,
+        interests: finalInterests
+      });
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving learner data:', error);
+    }
   };
 
   const handlePlayVideo = () => {
@@ -319,6 +380,50 @@ export default function LearnerDataPage({
     }
     if (onLanguageChange) {
       onLanguageChange(language);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    // Get the actual text from the "Other" text areas
+    const otherInterests = formData.get('otherInterests') as string;
+    const otherTopics = formData.get('otherTopics') as string;
+
+    // Get selected interests and topics
+    const selectedInterests = interests
+      .filter(interest => formData.get(`interest-${interest}`) === 'true')
+      .map(interest => interest === 'Other' ? otherInterests : interest);
+
+    const selectedTopics = topics
+      .filter(topic => formData.get(`topic-${topic}`) === 'true')
+      .map(topic => topic === 'Other' ? otherTopics : topic);
+
+    try {
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          interests: selectedInterests,
+          topics: selectedTopics
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+
+      // Update local state
+      updateUserData('learnerData', {
+        interests: selectedInterests,
+        topics: selectedTopics,
+        timestamp: new Date().toISOString()
+      });
+
+      onNext();
+    } catch (error) {
+      console.error('Error saving learner data:', error);
     }
   };
 

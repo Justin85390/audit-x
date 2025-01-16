@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
+import { supabase } from '../lib/supabase';
 
 interface WritingPageProps {
   onNext: () => void;
@@ -174,22 +175,35 @@ ${emailText}`,
     const emailText = formData.get('email') as string;
 
     const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement;
-    const originalButtonText = submitButton.textContent;
     submitButton.textContent = 'Analyzing...';
     submitButton.disabled = true;
 
     try {
+      // Get OpenAI analysis
       const analysisResult = await analyzeEmail(emailText);
       
+      // Get user email
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          writing_submission: emailText,
+          writing_openai_analysis: analysisResult
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+      console.log('Writing data saved successfully');
+
+      // Update local state
       const writingData = {
-        to: formData.get('to') as string,
-        subject: formData.get('subject') as string,
-        email: emailText,
-        analysis: String(analysisResult),
+        submission: emailText,
+        analysis: analysisResult,
         timestamp: new Date().toISOString()
       };
-      
-      console.log('Final writing data:', writingData);
       
       updateUserData('writingData', writingData);
       onNext();
@@ -197,7 +211,7 @@ ${emailText}`,
       console.error('Error:', error);
       alert('There was an error analyzing your email. Please try again.');
     } finally {
-      submitButton.textContent = originalButtonText;
+      submitButton.textContent = 'Submit & Continue';
       submitButton.disabled = false;
     }
   };
@@ -341,9 +355,8 @@ ${emailText}`,
                       alert('Pasting is not allowed. Please write your response.');
                     }}
                   />
-                  <div className={`text-sm mt-2 ${wordCount >= 50 && wordCount <= 70 ? 'text-green-600' : 'text-gray-600'}`}>
-                    Word count: {wordCount} 
-                    {wordCount > 70 && " (maximum 70 words)"}
+                  <div className="text-sm mt-2 text-gray-600">
+                    Word count: {wordCount}
                   </div>
                 </div>
               </div>

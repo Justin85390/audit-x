@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Define your models here
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  firstName String?
+  lastName  String?
+  timeCommitment String?
+  motivation String[]
+  interests String[]
+  audits    Audit[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Audit {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  readingScore    Float?
+  writingScore    Float?
+  speakingScore   Float?
+  listeningScore  Float?
+  overallScore    Float?
+  cefrLevel       String?
+  readingCorrectAnswers Int?
+  readingLevel    String?
+  writingFeedback String?
+  speakingFeedback String?
+  completedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SpeakingAssessment {
+  id            String   @id @default(cuid())
+  userId        String
+  transcript    String
+  oliverResponse String
+  timestamp     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id])
+}
