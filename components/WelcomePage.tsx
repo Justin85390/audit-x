@@ -64,7 +64,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
     }, 5000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [translations.length]);
 
   const startRecording = async () => {
     console.log("Starting recording for Oliver...");
