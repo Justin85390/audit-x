@@ -11,12 +11,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Combine OLIVER_BASE with OLIVER_WEBAPP for complete instructions
-    const combinedInstructions = `${OLIVER_BASE}
-
-When discussing the audit process:
-${OLIVER_WEBAPP}`;
-
+    // Direct fetch to OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -27,7 +22,7 @@ ${OLIVER_WEBAPP}`;
         model: "gpt-3.5-turbo",
         messages: [{
           role: "system",
-          content: combinedInstructions
+          content: `${OLIVER_BASE}\n\n${OLIVER_WEBAPP}`
         }, {
           role: "user",
           content: body.transcription

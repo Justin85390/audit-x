@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Direct OpenAI chat completion call
+    // Direct fetch to OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
