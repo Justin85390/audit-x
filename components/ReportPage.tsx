@@ -8,27 +8,7 @@ interface ReportPageProps {
       name?: string;
       email?: string;
     };
-    learnerData?: {
-      timeToLearn?: string;
-      motivation?: string[];
-      interests?: string[];
-      device?: string[];
-      contentType?: string[];
-      classroomFormat?: string[];
-    };
-    speakingData?: {
-      transcripts?: any;
-      timestamp?: string;
-    };
-    opinionData?: {
-      transcription?: string;
-      analysis?: string;
-      speechAceAnalysis?: any;
-      timestamp?: string;
-    };
-    listeningScore?: number;
-    readingScore?: number;
-    writingScore?: number;
+    // Add other userData types as needed
   };
 }
 

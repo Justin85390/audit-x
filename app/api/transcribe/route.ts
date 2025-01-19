@@ -1,193 +1,91 @@
-import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import { OLIVER_BASE, OLIVER_SPEAKING_ASSESSMENT } from '../../lib/oliver-instructions';
+import { Configuration, OpenAIApi } from 'openai';
+import { OLIVER_BASE } from '@/app/lib/oliver-instructions';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
-export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    console.error('OpenAI API key missing');
-    return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
+function getDefaultResponse(text: string): string {
+  if (text.includes('how are you')) {
+    return "I'm doing well, thank you! I'm here to help you with the language audit. What would you like to know?";
+  } 
+  if (text.includes('hello') || text.includes('hi ') || text.includes('hey')) {
+    return "Hello! I'm Oliver, your language audit assistant. How can I help you today?";
   }
+  if (text.includes('audit')) {
+    return "The language audit is a comprehensive assessment that helps us understand your English skills and learning needs. Would you like me to explain more about how it works?";
+  }
+  if (text.includes('explain') || text.includes('tell me more')) {
+    return "The audit takes about 15-20 minutes and includes reading, speaking, and listening exercises. We'll assess your current level and identify areas for improvement. Would you like to start?";
+  }
+  if (text.includes('thank')) {
+    return "You're welcome! Is there anything else you'd like to know about the language audit?";
+  }
+  return "I understand you're interested in the language audit. Could you please clarify what specific information you'd like to know?";
+}
 
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
+    // Log the content type we're receiving
+    console.log('Content-Type:', req.headers.get('content-type'));
     
-    // Handle text input (for chat)
-    if (body.text) {
-      // Get chat response from OpenAI
-      const getInstructions = (pageType: string) => {
-        switch(pageType) {
-          case 'teaching':
-            return OLIVER_BASE;
-          case 'conversation':
-            return OLIVER_BASE;
-          case 'speaking':
-            return OLIVER_SPEAKING_ASSESSMENT.instructions;
-          default:
-            return OLIVER_BASE;
-        }
-      };
-
-      const pageType = request.headers.get('x-page-type') || 'default';
-      const instructions = getInstructions(pageType);
-
-      // Special handling for speaking assessment
-      if (pageType === 'speaking' && body.forceResponse) {
-        const responseText = body.forceResponse;
-
-        // Generate speech from the exact response text
-        const speechResponse = await openai.audio.speech.create({
-          model: "tts-1",
-          voice: "onyx",
-          input: responseText,
-        });
-
-        // Convert the audio to base64
-        const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-        const audioBase64 = audioBuffer.toString('base64');
-        const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
-
-        return NextResponse.json({
-          response: responseText,
-          audioUrl: audioUrl
-        });
-      }
-
-      // Existing chat logic for other page types
-      const chatResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: instructions },
-          { role: "user", content: body.text }
-        ]
-      });
-
-      const responseText = chatResponse.choices[0].message.content ?? "I'm sorry, I couldn't generate a response.";
-
-      // Generate speech from the response
-      const speechResponse = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "onyx",
-        input: responseText,
-      });
-
-      // Convert the audio to base64
-      const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-      const audioBase64 = audioBuffer.toString('base64');
-      const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
-
-      return NextResponse.json({
-        response: responseText,
-        audioUrl: audioUrl
+    const formData = await req.formData();
+    const file = formData.get('file');
+    
+    if (!file) {
+      console.error('No file in request');
+      return new Response(JSON.stringify({ error: 'No file provided' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    // Handle audio input (existing code)
-    const { audio } = body;
-    console.log('Audio data received:', typeof audio, audio ? audio.substring(0, 100) : 'no audio');
-
-    if (!audio) {
-      console.error('No audio data in request');
-      return NextResponse.json({ error: 'No audio data provided' }, { status: 400 });
-    }
-
-    // Make sure we're getting a proper data URL
-    if (!audio.startsWith('data:audio/webm;base64,')) {
-      console.error('Invalid audio format - wrong prefix');
-      return NextResponse.json({ error: 'Invalid audio format - expected webm' }, { status: 400 });
-    }
-
-    // Extract the base64 data
-    const base64Data = audio.split('base64,')[1];
+    // Create new FormData for OpenAI
+    const openAIFormData = new FormData();
+    openAIFormData.append('file', file);
+    openAIFormData.append('model', 'whisper-1');
     
-    if (!base64Data) {
-      console.error('Invalid audio format - no base64 data found');
-      return NextResponse.json({ error: 'Invalid audio format - no base64 data' }, { status: 400 });
-    }
-
-    console.log('Creating audio file for OpenAI');
-    const audioBuffer = Buffer.from(base64Data, 'base64');
-    const audioFile = {
-      buffer: audioBuffer,
-      name: 'audio.webm',
-      type: 'audio/webm'
-    };
-
-    console.log('Sending to OpenAI');
-    const formData = new FormData();
-    formData.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), 'audio.webm');
-    
-    const response = await openai.audio.transcriptions.create({
-      file: formData.get('file') as any,
-      model: 'whisper-1',
-      response_format: 'json',
+    console.log('Sending file:', {
+      type: file instanceof File ? file.type : 'not a file',
+      size: file instanceof File ? file.size : 'unknown'
     });
 
-    console.log('Received OpenAI response');
-    const transcription = response.text;
+    const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+      },
+      body: openAIFormData
+    });
 
-    // For Welcome page, continue with chat response and audio
-    if (request.headers.get('x-page-type') !== 'opinion') {
-      // Get chat response from OpenAI
-      const getInstructions = (pageType: string) => {
-        switch(pageType) {
-          case 'teaching':
-            return OLIVER_BASE;
-          case 'conversation':
-            return OLIVER_BASE;
-          case 'speaking':
-            return OLIVER_SPEAKING_ASSESSMENT.instructions;
-          default:
-            return OLIVER_BASE;
-        }
-      };
-
-      const instructions = getInstructions(request.headers.get('x-page-type') || 'default');
-
-      const chatResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          { role: "system", content: instructions },
-          { role: "user", content: transcription }
-        ]
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json().catch(() => ({}));
+      console.error('OpenAI Error:', {
+        status: openaiResponse.status,
+        statusText: openaiResponse.statusText,
+        error: errorData
       });
-
-      const responseText = chatResponse.choices[0].message.content ?? "I'm sorry, I couldn't generate a response.";
-
-      // Generate speech from the response
-      const speechResponse = await openai.audio.speech.create({
-        model: "tts-1",
-        voice: "onyx",
-        input: responseText,
-      });
-
-      // Convert the audio to base64
-      const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-      const audioBase64 = audioBuffer.toString('base64');
-      const audioUrl = `data:audio/mp3;base64,${audioBase64}`;
-
-      return NextResponse.json({
-        transcription: transcription,
-        response: responseText,
-        audioUrl: audioUrl
-      });
+      throw new Error(`OpenAI API error: ${openaiResponse.status} ${openaiResponse.statusText}`);
     }
 
-    // For Opinion page, just return transcription
-    return NextResponse.json({ transcription: transcription });
+    const data = await openaiResponse.json();
+    console.log('Transcription successful:', data);
+    
+    return new Response(JSON.stringify({
+      transcription: data.text,
+      text: data.text
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
 
   } catch (error: any) {
-    console.error('API Error:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause
+    console.error('Transcribe Error:', error);
+    return new Response(JSON.stringify({
+      error: error.message || 'Failed to transcribe audio'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
     });
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
   }
 } 

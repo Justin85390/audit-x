@@ -16,8 +16,11 @@ export default function WritingPage({ onNext, updateUserData }: WritingPageProps
   const initialLoadRef = useRef(true);
   const [showFrenchInstructions, setShowFrenchInstructions] = useState(false);
   const [wordCount, setWordCount] = useState(0);
+  const [writingText, setWritingText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const analyzeEmail = async (emailText: string) => {
+  const analyzeWithOpenAI = async (text: string) => {
+    console.log('Starting OpenAI analysis...');
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
@@ -25,194 +28,72 @@ export default function WritingPage({ onNext, updateUserData }: WritingPageProps
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          prompt: `Please analyze the following email using this specific scoring system. Assess strictly against these CEFR-aligned criteria.
-
-Email Assessment Scoring Grid (20 points total)
-
-Structure & Format (4 points):
-- C2 (4 pts): Sophisticated structure with perfect paragraphing; seamlessly integrates all elements (greeting, context, suggestion, explanation, closing) in a natural flow
-- C1 (3.5 pts): Well-structured with appropriate paragraphing; all elements present and logically organized
-- B2 (3 pts): Good structure with clear paragraphing; all elements present but transitions may be mechanical
-- B1 (2 pts): Basic structure; most elements present but organization may be inconsistent
-- A2 (1 pt): Simple structure; basic elements only (greeting + message); limited organization
-- A1 (0.5 pts): Minimal structure; may miss key elements like greeting or closing
-
-Task Completion & Content (4 points):
-- C2 (4 pts): Sophisticated suggestion with compelling rationale; anticipates and addresses potential concerns
-- C1 (3.5 pts): Clear, detailed suggestion with well-developed supporting arguments
-- B2 (3 pts): Clear suggestion with relevant supporting details
-- B1 (2 pts): Basic suggestion with simple explanation
-- A2 (1 pt): Simple or unclear suggestion with minimal explanation
-- A1 (0.5 pts): Very basic or incomplete suggestion
-
-Language Accuracy (4 points):
-- C2 (4 pts): Sophisticated language; near-perfect grammar; effective use of complex structures
-- C1 (3.5 pts): Advanced language; rare minor errors; good range of complex structures
-- B2 (3 pts): Good control of grammar; some complex structures; occasional errors don't impede understanding
-- B1 (2 pts): Basic grammar control; simple structures; errors may be frequent but meaning remains clear
-- A2 (1 pt): Limited grammar control; frequent basic errors (articles, tenses, agreement)
-- A1 (0.5 pts): Very limited grammar; meaning often unclear due to errors
-
-Professional Tone & Register (4 points):
-- C2 (4 pts): Sophisticated professional tone; nuanced expression of politeness
-- C1 (3.5 pts): Consistently appropriate professional tone with varied expressions
-- B2 (3 pts): Clear professional tone with standard polite expressions
-- B1 (2 pts): Generally appropriate tone with basic polite expressions
-- A2 (1 pt): Basic level of politeness; may be inconsistent or inappropriate at times
-- A1 (0.5 pts): Very limited awareness of formal register
-
-Word Count & Conciseness (4 points):
-- C2 (4 pts): 50-70 words; precise and elegant expression
-- C1 (3.5 pts): 50-70 words; clear and efficient expression
-- B2 (3 pts): 45-75 words; good control of expression
-- B1 (2 pts): 40-80 words OR some redundancy
-- A2 (1 pt): <40 or >80 words OR significant redundancy
-- A1 (0.5 pts): Far outside word limits OR very repetitive
-
-Total Score CEFR Mapping:
-18-20 points = C2
-16-17.5 points = C1
-13-15.5 points = B2
-10-12.5 points = B1
-5-9.5 points = A2
-0-4.5 points = A1
-
-Level Indicators:
-
-C2 Level:
-- Sophisticated expressions and complex structures
-- Nuanced and precise vocabulary
-- Natural flow with elegant transitions
-- Perfect control of tone and register
-
-C1 Level:
-- Advanced vocabulary and expressions
-- Consistent use of complex structures
-- Strong organizational skills
-- Minor errors only in sophisticated language
-
-B2 Level:
-- Good range of vocabulary
-- Mix of complex and simple structures
-- Clear organization
-- Occasional errors in complex structures
-
-B1 Level:
-- Adequate vocabulary for task
-- Mainly simple structures
-- Basic organization
-- Errors don't impede understanding
-
-A2 Level:
-- Basic vocabulary
-- Simple sentence structures
-- Limited organization
-- Frequent basic errors
-
-A1 Level:
-- Very limited vocabulary
-- Incomplete or fragmented structures
-- Minimal organization
-- Meaning often unclear
-
-Please provide:
-1. A detailed score for each category (out of 4), with specific examples from the text to justify each score
-2. The total score (out of 20)
-3. The corresponding CEFR level
-4. Detailed feedback using this template:
-"CEFR Level Assessment: [level]
-Overall Score: [X/20]
-
-Category Breakdown:
-- Structure & Format: [score] - [specific examples]
-- Task Completion: [score] - [specific examples]
-- Language Accuracy: [score] - [specific examples]
-- Professional Tone: [score] - [specific examples]
-- Word Count & Conciseness: [score] - [specific examples]
-
-Key Strengths:
-1. [strength 1 with example]
-2. [strength 2 with example]
-
-Areas for Improvement:
-1. [area 1 with example and specific suggestion]
-2. [area 2 with example and specific suggestion]
-
-Next Steps for Development:
-[3 specific, level-appropriate suggestions for improvement]"
-
-Email text to analyze:
-${emailText}`,
-          emailText: emailText
+          text: text
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Analysis request failed');
+        throw new Error('Analysis failed');
       }
 
       const data = await response.json();
-      console.log('Raw API Response:', data);
-
-      // Handle the specific object structure we're receiving
-      if (data.analysis && typeof data.analysis === 'object') {
-        const analysisText = data.analysis.text || JSON.stringify(data.analysis);
-        console.log('Converted analysis text:', analysisText);
-        return analysisText;
-      }
-
-      return String(data.analysis || 'Analysis completed');
-
+      console.log('OpenAI analysis complete:', data);
+      return data;
     } catch (error) {
-      console.error('Error analyzing email:', error);
-      return 'Error analyzing email. Please try again.';
+      console.error('Error in OpenAI analysis:', error);
+      return {
+        analysis: 'Error analyzing writing. Please try again.'
+      };
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const emailText = formData.get('email') as string;
+  const handleSubmit = async () => {
+    if (!writingText.trim()) {
+      alert('Please write something before submitting.');
+      return;
+    }
 
-    const submitButton = e.currentTarget.querySelector('button[type="submit"]') as HTMLButtonElement;
-    submitButton.textContent = 'Analyzing...';
-    submitButton.disabled = true;
-
+    setIsLoading(true);
     try {
-      // Get OpenAI analysis
-      const analysisResult = await analyzeEmail(emailText);
+      console.log('1. Starting analysis process...');
       
-      // Get user email
-      const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) throw new Error('No user email found');
+      // Get OpenAI Analysis
+      const openAIResponse = await analyzeWithOpenAI(writingText);
+      console.log('2. OpenAI analysis complete:', openAIResponse);
 
-      // Save to Supabase
+      // Save to Supabase with correct column names
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) {
+        throw new Error('No user email found');
+      }
+
+      console.log('3. Saving to Supabase...');
       const { data, error } = await supabase
         .from('users')
         .update({
-          writing_submission: emailText,
-          writing_openai_analysis: analysisResult
+          writing_submission: writingText,
+          writing_openai_analysis: openAIResponse.analysis
         })
-        .eq('email', userEmail);
+        .eq('email', userEmail)
+        .select();
 
       if (error) throw error;
-      console.log('Writing data saved successfully');
+      console.log('4. Save successful:', data);
 
-      // Update local state
-      const writingData = {
-        submission: emailText,
-        analysis: analysisResult,
+      // Update user data in context/state
+      updateUserData('writingData', {
+        text: writingText,
+        analysis: openAIResponse.analysis,
         timestamp: new Date().toISOString()
-      };
-      
-      updateUserData('writingData', writingData);
+      });
+
+      // Navigate to report page
       onNext();
     } catch (error) {
-      console.error('Error:', error);
-      alert('There was an error analyzing your email. Please try again.');
+      console.error('Error in submission:', error);
+      alert('Failed to submit writing sample. Please try again.');
     } finally {
-      submitButton.textContent = 'Submit & Continue';
-      submitButton.disabled = false;
+      setIsLoading(false);
     }
   };
 
@@ -244,6 +125,12 @@ ${emailText}`,
     const text = e.target.value;
     const words = text.trim().split(/\s+/).filter(word => word.length > 0);
     setWordCount(words.length);
+    setWritingText(text);
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevent default form submission
+    await handleSubmit();
   };
 
   return (
@@ -307,7 +194,7 @@ ${emailText}`,
         <div className="flex gap-6">
           {/* Email Form */}
           <div className="flex-1">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleFormSubmit} className="space-y-6">
               <div className="space-y-4">
                 <div>
                   <label htmlFor="to" className="block text-sm font-medium text-gray-700 mb-1">
@@ -364,9 +251,10 @@ ${emailText}`,
               <div className="flex justify-center mt-8">
                 <button
                   type="submit"
-                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 min-w-[200px]"
+                  disabled={isLoading}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition-colors duration-200 min-w-[200px] disabled:opacity-50"
                 >
-                  Submit & Continue
+                  {isLoading ? 'Analyzing...' : 'Submit & Continue'}
                 </button>
               </div>
             </form>

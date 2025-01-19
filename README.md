@@ -1,30 +1,36 @@
-# Language Learning Assessment App
+# Language Audit App - Version 4
 
-## Description
-A web application for language learning assessment that includes:
-- Contact information collection
-- Learning preferences assessment
-- Speaking assessment
-- Opinion expression
-- Listening comprehension
-- Reading comprehension
-- Writing assessment
-- Comprehensive PDF report generation
+## Key Improvements from Version 3
+- Fixed OpenAI analysis integration across all assessment pages
+- Corrected FormData handling in transcription endpoints
+- Updated Supabase column names for writing assessment
+- Improved loading states and error handling
+- Complete working flow from start to report page
 
-## Technologies Used
-- Next.js
-- TypeScript
-- Tailwind CSS
-- ShadcnUI
-- OpenAI Integration
-- PDF Generation
+## Fixed Components
+- WritingPage.tsx
+  - Correct OpenAI analysis integration
+  - Proper Supabase column names (writing_submission, writing_openai_analysis)
+  - Improved loading state ("Analyzing...")
 
-## Setup
+- SpeakingPage.tsx & OpinionPage.tsx
+  - Fixed audio recording and transcription
+  - Proper FormData handling for audio files
+  - Improved error handling
+
+- API Routes
+  - /api/analyze - Updated to use chat completions
+  - /api/transcribe - Fixed FormData handling
+
+## Next Steps
+- Build out the Report Page sections:
+  1. Writing Assessment
+  2. Speaking Assessment
+  3. Opinion Assessment
+  4. Overall Analysis
+
+## Getting Started
 1. Clone the repository
 2. Install dependencies:
 
-```npm install```
-
-3. Create a .env.local file with required environment variables:
 ```
-OPENAI_API_KEY

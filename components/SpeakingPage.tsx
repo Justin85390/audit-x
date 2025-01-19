@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { OLIVER_SPEAKING_ASSESSMENT, SpeakingAssessmentData, constructOliverResponse } from '@/app/lib/oliver-instructions';
 import { Button } from "@/components/ui/button";
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '../app/contexts/LanguageContext';
 
 type Language = 'en' | 'fr';
 
@@ -90,20 +91,20 @@ interface TranscriptItem {
 }
 
 export default function SpeakingPage({ onNext, updateUserData, onLanguageChange }: SpeakingPageProps) {
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
+  const { language } = useLanguage();
+  const videoRef = useRef<HTMLVideoElement>(null);
   
-  const handleLanguageChange = async (language: Language) => {
-    setCurrentLanguage(language);
-    if (videoRef) {
+  const handleLanguageChange = async (newLanguage: Language) => {
+    if (videoRef.current) {
       try {
-        videoRef.pause();
-        videoRef.load();
+        videoRef.current.pause();
+        videoRef.current.load();
       } catch (error) {
         console.error('Error handling video on language change:', error);
       }
     }
     if (onLanguageChange) {
-      onLanguageChange(language);
+      onLanguageChange(newLanguage);
     }
   };
 
@@ -115,7 +116,6 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
 
   // Add state for tracking questions and transcripts
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -134,108 +134,111 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Update the video URLs to match the correct paths
+  const videoUrls = {
+    en: "https://justindonlon.com/wp-content/uploads/2025/01/Speaking-Page-2.mp4",  // Fixed URL
+    fr: "https://justindonlon.com/wp-content/uploads/2025/01/FR-Speaking-Page-2.mp4"  // Fixed URL
+  };
+
+  // Update the useEffect for video handling
   useEffect(() => {
-    if (videoRef) {
-      videoRef.muted = false;
-      videoRef.play().catch((error) => {
-        console.log('Autoplay failed:', error);
+    if (videoRef.current) {
+      try {
+        videoRef.current.play();
+      } catch (error) {
+        console.error('Error playing video:', error);
         setAutoplayFailed(true);
-      });
+      }
     }
-  }, [videoRef]);
+  }, [language]);
 
   const handlePlayVideo = () => {
-    if (videoRef) {
-      videoRef.muted = false;
-      videoRef.play();
+    if (videoRef.current) {
+      videoRef.current.play();
     }
   };
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus' // Specify codec
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        setIsLoading(true);
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
-        try {
-          const base64Audio = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(audioBlob);
-          });
-
-          const response = await fetch('/api/transcribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-page-type': 'speaking'
-            },
-            body: JSON.stringify({
-              audio: base64Audio,
-              context: OLIVER_SPEAKING_ASSESSMENT.context
-            })
-          });
-
-          if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-          }
-
-          const data = await response.json() as TranscriptionData;
-          const userTranscription = data.transcription;
-
-          // Store transcript in language-specific array
-          const newTranscript: TranscriptItem = {
-            speaker: 'user',
-            text: userTranscription,
-            timestamp: new Date().toISOString(),
-            language: currentLanguage // Add language identifier
-          };
-
-          // Update transcripts for current language
-          setTranscriptHistory(prev => ({
-            ...prev,
-            [currentLanguage]: [...(prev[currentLanguage] || []), newTranscript]
-          }));
-
-          // Store in user data with language context
-          updateUserData('speakingData', {
-            transcripts: {
-              ...transcriptHistory,
-              [currentLanguage]: [...(transcriptHistory[currentLanguage] || []), newTranscript]
-            },
-            timestamp: new Date().toISOString()
-          });
-
-        } catch (error) {
-          console.error('Transcription error:', error);
-          alert('Error processing your answer. Please try again.');
-        } finally {
-          setIsLoading(false);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.start();
+      // Start recording with a timeslice to get data more frequently
+      mediaRecorder.start(100);
       setIsRecording(true);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      alert('Error accessing microphone. Please check your browser settings.');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Unable to access microphone. Please ensure you have granted permission.');
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+  const stopRecording = async () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      try {
+        // Stop recording and tracks
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+
+        setIsLoading(true);
+        
+        // Wait for the last chunk of audio data
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Create audio blob with proper MIME type
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: 'audio/webm' 
+        });
+        
+        console.log('Audio blob:', {
+          size: audioBlob.size,
+          type: audioBlob.type,
+          chunks: audioChunksRef.current.length
+        });
+
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'whisper-1');
+
+        // Send to transcribe endpoint
+        const response = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData  // No headers needed for FormData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error('Transcription API error:', data);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        if (!data.transcription && !data.text) {
+          console.error('No transcription in response:', data);
+          throw new Error('No transcription in response');
+        }
+
+        // Use either transcription or text property
+        const transcriptionText = data.transcription || data.text;
+        handleTranscriptionComplete(transcriptionText);
+
+      } catch (error) {
+        console.error('Transcription error:', error);
+        alert('Failed to transcribe audio. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -258,10 +261,10 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
 
       // Debug transcript history
       console.log('Full transcript history:', transcriptHistory);
-      console.log('Current language:', currentLanguage);
+      console.log('Current language:', language);
 
       // Get just the text content
-      const transcriptText = transcriptHistory[currentLanguage]
+      const transcriptText = transcriptHistory[language]
         ?.map(item => item.text)
         .join(' ');
 
@@ -293,6 +296,24 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
     }
   };
 
+  const handleTranscriptionComplete = (transcriptionText: string) => {
+    const timestamp = new Date().toISOString();
+    
+    // Add new transcript to history
+    setTranscriptHistory(prev => ({
+      ...prev,
+      [language]: [
+        ...prev[language],
+        {
+          speaker: 'user',
+          text: transcriptionText,
+          timestamp,
+          language: language
+        }
+      ]
+    }));
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
       {/* Single Combined Container */}
@@ -301,7 +322,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
         <div className="flex justify-end mb-4 space-x-2">
           <button 
             onClick={() => handleLanguageChange('en')}
-            className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/gb-flag.png"
@@ -313,7 +334,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
           </button>
           <button 
             onClick={() => handleLanguageChange('fr')}
-            className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/fr-flag.png"
@@ -325,22 +346,25 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[currentLanguage].title}</h1>
+        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[language].title}</h1>
         
         {/* Video Section */}
         <div className="w-full flex flex-col items-center mb-8">
           <video
-            ref={(el) => setVideoRef(el)}
-            src={currentLanguage === 'en' 
-              ? "https://justindonlon.com/wp-content/uploads/2025/01/Speaking-Page-2.mp4"
-              : "https://justindonlon.com/wp-content/uploads/2025/01/FR-Speaking-Page-2.mp4"
-            }
+            ref={videoRef}
+            src={videoUrls[language]}
             playsInline
             autoPlay
             controls
+            muted={false}
             className="rounded-lg mb-6"
             width="100%"
+            onError={(e) => {
+              console.error('Video loading error:', e);
+              setAutoplayFailed(true);
+            }}
           >
+            <source src={videoUrls[language]} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
           
@@ -349,14 +373,14 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
               onClick={handlePlayVideo}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4 mb-6"
             >
-              <span>🔊</span> {languageContent[currentLanguage].videoButton}
+              <span>🔊</span> {languageContent[language].videoButton}
             </button>
           )}
 
           {/* Question and Recording Section - Moved from second container */}
           <div className="w-full max-w-2xl mx-auto">
             <h3 className="text-2xl font-semibold text-center mb-4 text-gray-800">
-              {languageContent[currentLanguage].question}
+              {languageContent[language].question}
             </h3>
             <div className="flex flex-col items-center">
               <button
@@ -370,14 +394,14 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                   mb-4
                 `}
               >
-                {isLoading ? languageContent[currentLanguage].processingMessage : 
-                 isRecording ? languageContent[currentLanguage].stopButton : 
-                 languageContent[currentLanguage].recordButton}
+                {isLoading ? languageContent[language].processingMessage : 
+                 isRecording ? languageContent[language].stopButton : 
+                 languageContent[language].recordButton}
               </button>
 
               {isLoading && (
                 <p className="text-gray-600 text-center mt-2">
-                  {languageContent[currentLanguage].processingMessage}
+                  {languageContent[language].processingMessage}
                 </p>
               )}
             </div>
@@ -386,16 +410,16 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
       </div>
 
       {/* Recording History Container - Keep this separate */}
-      <div className={`w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 transition-opacity duration-500 ${transcriptHistory[currentLanguage]?.length ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 transition-opacity duration-500 ${transcriptHistory[language]?.length ? 'opacity-100' : 'opacity-0'}`}>
         {/* Recording History */}
         <div className="h-64 overflow-y-auto mb-6 bg-gray-50 rounded-lg p-4">
-          {transcriptHistory[currentLanguage]?.map((item, index) => (
+          {transcriptHistory[language]?.map((item, index) => (
             <div
               key={index}
               className="mb-4 text-gray-700"
             >
               <span className="font-semibold">
-                {currentLanguage === 'en' ? 'Your Response' : 'Votre Réponse'}:
+                {language === 'en' ? 'Your Response' : 'Votre Réponse'}:
               </span>
               {editingIndex === index ? (
                 <div className="flex gap-2 mt-2">
@@ -408,14 +432,14 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => {
-                        const updatedTranscripts = [...transcriptHistory[currentLanguage]];
+                        const updatedTranscripts = [...transcriptHistory[language]];
                         updatedTranscripts[index] = {
                           ...updatedTranscripts[index],
                           text: editingText
                         };
                         setTranscriptHistory({
                           ...transcriptHistory,
-                          [currentLanguage]: updatedTranscripts
+                          [language]: updatedTranscripts
                         });
                         setEditingIndex(null);
                       }}
@@ -439,7 +463,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                   <span>{item.text}</span>
                   <div className="flex flex-col items-center ml-4">
                     <span className="text-sm text-blue-500 mb-1">
-                      {currentLanguage === 'en' ? 'Edit Transcript' : 'Modifier la transcription'}
+                      {language === 'en' ? 'Edit Transcript' : 'Modifier la transcription'}
                     </span>
                     <button
                       onClick={() => {
@@ -447,7 +471,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                         setEditingText(item.text);
                       }}
                       className="text-blue-500 hover:text-blue-700 text-4xl opacity-75 group-hover:opacity-100 transition-opacity"
-                      title={currentLanguage === 'en' ? 'Edit text' : 'Modifier le texte'}
+                      title={language === 'en' ? 'Edit text' : 'Modifier le texte'}
                     >
                       ✎
                     </button>
@@ -473,12 +497,12 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                 mb-4
               `}
             >
-              {isLoading ? languageContent[currentLanguage].processingMessage : 
-               isRecording ? languageContent[currentLanguage].stopButton : 
-               languageContent[currentLanguage].reRecordButton}
+              {isLoading ? languageContent[language].processingMessage : 
+               isRecording ? languageContent[language].stopButton : 
+               languageContent[language].reRecordButton}
             </button>
 
-            {transcriptHistory[currentLanguage]?.length > 0 && (
+            {transcriptHistory[language]?.length > 0 && (
               <button
                 onClick={handleSaveTranscripts}
                 disabled={isSaving}
@@ -490,11 +514,11 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                 `}
               >
                 {isSaving ? (
-                  currentLanguage === 'en' ? 'Saving...' : 'Enregistrement...'
+                  language === 'en' ? 'Saving...' : 'Enregistrement...'
                 ) : saveSuccess ? (
                   '✓'
                 ) : (
-                  currentLanguage === 'en' ? 'Save Changes' : 'Enregistrer'
+                  language === 'en' ? 'Save Changes' : 'Enregistrer'
                 )}
               </button>
             )}
@@ -509,7 +533,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                   if (!userEmail) throw new Error('No user email found');
 
                   // Get the latest transcript
-                  const transcriptText = transcriptHistory[currentLanguage]
+                  const transcriptText = transcriptHistory[language]
                     ?.map(item => item.text)
                     .join(' ');
 
@@ -533,12 +557,12 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
                          shadow-lg hover:shadow-xl transition-all duration-200 
                          flex items-center justify-center gap-2"
             >
-              {languageContent[currentLanguage].continueToPartTwo}
+              {languageContent[language].continueToPartTwo}
               <span className="text-xl">→</span>
             </button>
             
             <p className="text-sm text-gray-600 italic mt-2">
-              {languageContent[currentLanguage].partTwoMessage}
+              {languageContent[language].partTwoMessage}
             </p>
           </div>
         </div>

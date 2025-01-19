@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { SelectWrapper } from "@/components/ui/select-wrapper"
 import { supabase } from '@/lib/supabase';
 import { UserData, UpdateUserDataFunction } from '@/types';
+import { useLanguage } from '../app/contexts/LanguageContext';
 
 type Language = 'en' | 'fr';
 
@@ -83,6 +84,7 @@ export default function LearnerDataPage({
   updateUserData,
   onLanguageChange
 }: LearnerDataPageProps) {
+  const { language } = useLanguage();
   const [currentForm, setCurrentForm] = useState<1 | 2>(1);
   const [formData, setFormData] = useState({
     timeToLearn: "",
@@ -96,7 +98,6 @@ export default function LearnerDataPage({
   });
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
@@ -284,7 +285,7 @@ export default function LearnerDataPage({
   const textareaStyles = "border-2 border-gray-700 rounded-md p-2 w-full focus:outline-none focus:border-blue-500 transition-colors"
 
   // For time commitment
-  const timeOptions = currentLanguage === 'en' ? [
+  const timeOptions = language === 'en' ? [
     { id: '1-2', value: '1-2', label: '1-2 hours per week' },
     { id: '3-5', value: '3-5', label: '3-5 hours per week' },
     { id: '6-10', value: '6-10', label: '6-10 hours per week' },
@@ -297,7 +298,7 @@ export default function LearnerDataPage({
   ];
 
   // Define the motivation options array
-  const motivationOptions = currentLanguage === 'en' ? [
+  const motivationOptions = language === 'en' ? [
     { id: 'work', value: 'work', label: 'Work/Professional Development' },
     { id: 'study', value: 'study', label: 'Academic Studies' },
     { id: 'travel', value: 'travel', label: 'Travel' },
@@ -312,7 +313,7 @@ export default function LearnerDataPage({
   ];
 
   // Define the interests options array
-  const interestsOptions = currentLanguage === 'en' ? [
+  const interestsOptions = language === 'en' ? [
     { id: 'business', value: 'business', label: 'Business & Professional' },
     { id: 'culture', value: 'culture', label: 'Culture & Entertainment' },
     { id: 'science', value: 'science', label: 'Science & Technology' },
@@ -327,7 +328,7 @@ export default function LearnerDataPage({
   ];
 
   // Define device options
-  const deviceOptions = currentLanguage === 'en' ? [
+  const deviceOptions = language === 'en' ? [
     { id: 'desktop', value: 'desktop', label: 'Desktop' },
     { id: 'tablet', value: 'tablet', label: 'Tablet' },
     { id: 'mobile', value: 'mobile', label: 'Mobile Phone' },
@@ -340,7 +341,7 @@ export default function LearnerDataPage({
   ];
 
   // Define content type options
-  const contentTypeOptions = currentLanguage === 'en' ? [
+  const contentTypeOptions = language === 'en' ? [
     { id: 'podcasts', value: 'podcasts', label: 'Podcasts' },
     { id: 'video', value: 'video', label: 'Video' },
     { id: 'interactive', value: 'interactive', label: 'Interactive Exercises' },
@@ -357,7 +358,7 @@ export default function LearnerDataPage({
   ];
 
   // Define classroom format options
-  const classroomFormatOptions = currentLanguage === 'en' ? [
+  const classroomFormatOptions = language === 'en' ? [
     { id: 'oneToOne', value: 'oneToOne', label: '1 to 1 with a teacher' },
     { id: 'group', value: 'group', label: 'Group classes' },
     { id: 'workshop', value: 'workshop', label: 'Workshops' }
@@ -367,8 +368,7 @@ export default function LearnerDataPage({
     { id: 'workshop', value: 'workshop', label: 'Ateliers' }
   ];
 
-  const handleLanguageChange = async (language: Language) => {
-    setCurrentLanguage(language);
+  const handleLanguageChange = async (newLanguage: Language) => {
     if (videoRef) {
       try {
         videoRef.pause();
@@ -378,7 +378,7 @@ export default function LearnerDataPage({
       }
     }
     if (onLanguageChange) {
-      onLanguageChange(language);
+      onLanguageChange(newLanguage);
     }
   };
 
@@ -431,7 +431,7 @@ export default function LearnerDataPage({
         <div className="flex justify-end mb-4 space-x-2">
           <button 
             onClick={() => handleLanguageChange('en')}
-            className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/gb-flag.png"
@@ -443,7 +443,7 @@ export default function LearnerDataPage({
           </button>
           <button 
             onClick={() => handleLanguageChange('fr')}
-            className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/fr-flag.png"
@@ -455,12 +455,12 @@ export default function LearnerDataPage({
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[currentLanguage].title}</h1>
+        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[language].title}</h1>
         
         <div className="w-full flex flex-col items-center">
           <video
             ref={(el) => setVideoRef(el)}
-            src={currentLanguage === 'en' 
+            src={language === 'en' 
               ? "https://justindonlon.com/wp-content/uploads/2025/01/LearnerData2.mp4"
               : "https://justindonlon.com/wp-content/uploads/2025/01/FR-LearnerData2.mp4"
             }
@@ -479,7 +479,7 @@ export default function LearnerDataPage({
               onClick={handleStartWithSound}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
             >
-              <span>🔊</span> {languageContent[currentLanguage].videoButton}
+              <span>🔊</span> {languageContent[language].videoButton}
             </button>
           )}
         </div>
@@ -489,25 +489,25 @@ export default function LearnerDataPage({
       {currentForm === 1 ? (
         <form onSubmit={handleFirstFormSubmit} className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-6 text-center">
-            {languageContent[currentLanguage].formNumber.first}
+            {languageContent[language].formNumber.first}
           </h2>
           <div className="space-y-8">
             <div>
               <Label htmlFor="timeToLearn">
-                {languageContent[currentLanguage].timeToLearn.question}
+                {languageContent[language].timeToLearn.question}
               </Label>
               <SelectWrapper
                 options={timeOptions}
                 value={formData.timeToLearn}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, timeToLearn: value }))}
-                placeholder={languageContent[currentLanguage].timeToLearn.placeholder}
+                placeholder={languageContent[language].timeToLearn.placeholder}
                 prefix="time"
               />
             </div>
 
             <div>
               <Label htmlFor="motivation">
-                {languageContent[currentLanguage].motivation.question}
+                {languageContent[language].motivation.question}
               </Label>
               
               <div className="grid grid-cols-2 gap-4 mt-2">
@@ -556,7 +556,7 @@ export default function LearnerDataPage({
 
             <div>
               <Label htmlFor="interests">
-                {languageContent[currentLanguage].interests.question}
+                {languageContent[language].interests.question}
               </Label>
               
               <div className="grid grid-cols-2 gap-4 mt-2">
@@ -609,20 +609,20 @@ export default function LearnerDataPage({
               type="submit"
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md transition-colors"
             >
-              {languageContent[currentLanguage].nextButton}
+              {languageContent[language].nextButton}
             </Button>
           </div>
         </form>
       ) : (
         <form onSubmit={handleSecondFormSubmit} className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-xl font-semibold mb-6 text-center">
-            {languageContent[currentLanguage].formNumber.second}
+            {languageContent[language].formNumber.second}
           </h2>
           <div className="space-y-6">
             {/* Device Preferences */}
             <div>
               <Label htmlFor="device">
-                {languageContent[currentLanguage].device.question}
+                {languageContent[language].device.question}
               </Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 {deviceOptions.map((option) => (
@@ -655,7 +655,7 @@ export default function LearnerDataPage({
             {/* Content Type Preferences */}
             <div>
               <Label htmlFor="contentType">
-                {languageContent[currentLanguage].contentType.question}
+                {languageContent[language].contentType.question}
               </Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 {contentTypeOptions.map((option) => (
@@ -688,7 +688,7 @@ export default function LearnerDataPage({
             {/* Classroom Format Preferences */}
             <div>
               <Label htmlFor="classroomFormat">
-                {languageContent[currentLanguage].classroomFormat.question}
+                {languageContent[language].classroomFormat.question}
               </Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 {classroomFormatOptions.map((option) => (
@@ -726,7 +726,7 @@ export default function LearnerDataPage({
                         shadow-lg hover:shadow-xl transition-all duration-200 
                         flex items-center justify-center gap-2 w-full"
             >
-              {currentLanguage === 'en' ? 'Save & Continue' : 'Enregistrer & Continuer'}
+              {language === 'en' ? 'Save & Continue' : 'Enregistrer & Continuer'}
               <span className="text-xl">→</span>
             </Button>
           </div>

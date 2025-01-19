@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import Image from 'next/legacy/image';
 import { Language, UserData, LanguageContent, FormData, UpdateUserDataFunction } from '@/types'
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '../app/contexts/LanguageContext';
 
 interface ContactDetailsPageProps {
   onNext: () => void;
@@ -16,6 +17,8 @@ interface ContactDetailsPageProps {
 }
 
 export default function ContactDetailsPage({ onNext, updateUserData }: ContactDetailsPageProps) {
+  const { language } = useLanguage();
+
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     lastName: "",
@@ -27,7 +30,6 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
 
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
@@ -114,8 +116,9 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
     }
   };
 
+  const content = languageContent[language];
+
   const handleLanguageChange = async (language: Language) => {
-    setCurrentLanguage(language);
     if (videoRef) {
       try {
         videoRef.pause();
@@ -203,7 +206,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
         <div className="flex justify-end mb-4 space-x-2">
           <button 
             onClick={() => handleLanguageChange('en')}
-            className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <Image
               src="/gb-flag.png"
@@ -215,7 +218,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
           </button>
           <button 
             onClick={() => handleLanguageChange('fr')}
-            className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <Image
               src="/fr-flag.png"
@@ -227,12 +230,12 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[currentLanguage].title}</h1>
+        <h1 className="text-4xl font-bold text-center mb-6">{content.title}</h1>
         
         <div className="w-full flex flex-col items-center">
           <video
             ref={(el) => setVideoRef(el)}
-            src={currentLanguage === 'en' 
+            src={language === 'en' 
               ? "https://justindonlon.com/wp-content/uploads/2025/01/ContactDetails3.mp4"
               : "https://justindonlon.com/wp-content/uploads/2025/01/FR-ContactDetails2.mp4"
             }
@@ -251,7 +254,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
               onClick={handleStartWithSound}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
             >
-              <span>🔊</span> {languageContent[currentLanguage].videoButton}
+              <span>🔊</span> {content.videoButton}
             </button>
           )}
         </div>
@@ -264,7 +267,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">
-                  {languageContent[currentLanguage].firstName}
+                  {content.firstName}
                 </Label>
                 <Input
                   id="firstName"
@@ -277,7 +280,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
               </div>
               <div>
                 <Label htmlFor="lastName">
-                  {languageContent[currentLanguage].lastName}
+                  {content.lastName}
                 </Label>
                 <Input
                   id="lastName"
@@ -293,7 +296,7 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
             {/* Email Field */}
             <div>
               <Label htmlFor="email">
-                {languageContent[currentLanguage].email}
+                {content.email}
               </Label>
               <Input
                 id="email"
@@ -310,14 +313,14 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
           {/* Privacy notice and submit button */}
           <div className="mt-8 space-y-4">
             <p className="text-sm text-gray-600 text-center">
-              {languageContent[currentLanguage].privacyNotice}
+              {content.privacyNotice}
             </p>
             <div className="flex justify-center">
               <Button 
                 type="submit"
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full"
               >
-                {languageContent[currentLanguage].submitButton}
+                {content.submitButton}
               </Button>
             </div>
           </div>

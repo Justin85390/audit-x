@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '../app/contexts/LanguageContext';
 
 type Language = 'en' | 'fr';
 
@@ -364,10 +365,10 @@ export const needsData: NeedCategory[] = [
 ];
 
 export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageChange }: NeedsAnalysisPageProps) {
+  const { language } = useLanguage();
   const [selectedNeeds, setSelectedNeeds] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
-  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [autoplayFailed, setAutoplayFailed] = useState(false);
 
   const handleNeedToggle = (need: string) => {
@@ -402,18 +403,17 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
     }
   };
 
-  const handleLanguageChange = async (language: Language) => {
-    setCurrentLanguage(language);
-    if (videoRef) {
+  const handleLanguageChange = async (newLanguage: Language) => {
+    if (videoRef.current) {
       try {
-        videoRef.pause();
-        videoRef.load();
+        videoRef.current.pause();
+        videoRef.current.load();
       } catch (error) {
         console.error('Error handling video on language change:', error);
       }
     }
     if (onLanguageChange) {
-      onLanguageChange(language);
+      onLanguageChange(newLanguage);
     }
   };
 
@@ -421,7 +421,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
     ? needsData.map(category => ({
         ...category,
         needs: category.needs.filter(need =>
-          need[currentLanguage].toLowerCase().includes(searchTerm.toLowerCase())
+          need[language].toLowerCase().includes(searchTerm.toLowerCase())
         )
       })).filter(category => category.needs.length > 0)
     : needsData;
@@ -434,7 +434,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
         <div className="flex justify-end mb-4 space-x-2">
           <button 
             onClick={() => handleLanguageChange('en')}
-            className={`p-1 rounded ${currentLanguage === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/gb-flag.png"
@@ -446,7 +446,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
           </button>
           <button 
             onClick={() => handleLanguageChange('fr')}
-            className={`p-1 rounded ${currentLanguage === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+            className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
           >
             <img
               src="/images/flags/fr-flag.png"
@@ -458,12 +458,12 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
           </button>
         </div>
 
-        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[currentLanguage].title}</h1>
+        <h1 className="text-4xl font-bold text-center mb-6">{languageContent[language].title}</h1>
         
         <div className="w-full flex flex-col items-center">
           <video
-            ref={(el) => setVideoRef(el)}
-            src={currentLanguage === 'en' 
+            ref={videoRef}
+            src={language === 'en' 
               ? "https://justindonlon.com/wp-content/uploads/2025/01/Pro-Needs2.mp4"
               : "https://justindonlon.com/wp-content/uploads/2025/01/FR-Pro-Needs2.mp4"
             }
@@ -486,7 +486,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
           {needsData.map((category, index) => (
             <AccordionItem key={index} value={`item-${index}`}>
               <AccordionTrigger className="text-lg font-semibold">
-                {category.category[currentLanguage]}
+                {category.category[language]}
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-2">
@@ -494,8 +494,8 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
                     <div key={needIndex} className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded">
                       <Checkbox
                         id={`need-${index}-${needIndex}`}
-                        checked={selectedNeeds[need[currentLanguage]] || false}
-                        onCheckedChange={(_checked: boolean) => handleNeedToggle(need[currentLanguage])}
+                        checked={selectedNeeds[need[language]] || false}
+                        onCheckedChange={(_checked: boolean) => handleNeedToggle(need[language])}
                         className="w-5 h-5 border-2 border-gray-300 rounded 
                           data-[state=checked]:bg-blue-500 
                           data-[state=checked]:border-blue-500 
@@ -505,7 +505,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
                         htmlFor={`need-${index}-${needIndex}`}
                         className="text-sm leading-tight cursor-pointer"
                       >
-                        {need[currentLanguage]}
+                        {need[language]}
                       </label>
                     </div>
                   ))}
@@ -517,21 +517,21 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
 
         {/* Selected Needs Summary */}
         <div className="mb-6 p-4 bg-gray-50 rounded-md">
-          <h2 className="font-semibold mb-2">{languageContent[currentLanguage].selectedNeeds}</h2>
+          <h2 className="font-semibold mb-2">{languageContent[language].selectedNeeds}</h2>
           <div className="space-y-4">
             {needsData.map((category) => {
               const selectedInCategory = category.needs.filter(
-                need => selectedNeeds[need[currentLanguage]]
+                need => selectedNeeds[need[language]]
               );
               
               if (selectedInCategory.length === 0) return null;
 
               return (
-                <div key={category.category[currentLanguage]} className="space-y-1">
-                  <h3 className="font-bold text-gray-800">{category.category[currentLanguage]}</h3>
+                <div key={category.category[language]} className="space-y-1">
+                  <h3 className="font-bold text-gray-800">{category.category[language]}</h3>
                   {selectedInCategory.map((need, index) => (
                     <div key={index} className="text-sm ml-4">
-                      • {need[currentLanguage]}
+                      • {need[language]}
                     </div>
                   ))}
                 </div>
@@ -546,7 +546,7 @@ export default function NeedsAnalysisPage({ onNext, updateUserData, onLanguageCh
                     shadow-lg hover:shadow-xl transition-all duration-200 
                     flex items-center justify-center gap-2 w-full"
         >
-          {currentLanguage === 'en' ? 'Save and Continue' : 'Enregistrer et Continuer'}
+          {language === 'en' ? 'Save and Continue' : 'Enregistrer et Continuer'}
           <span className="text-xl">→</span>
         </button>
       </div>

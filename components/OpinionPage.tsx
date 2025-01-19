@@ -79,15 +79,20 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
       }
       
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus' // Specify codec
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
       };
 
-      mediaRecorder.start();
+      // Start recording with a timeslice to get data more frequently
+      mediaRecorder.start(100);
       setIsRecording(true);
       startTimer();
     } catch (error) {
@@ -97,47 +102,81 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
   };
 
   const stopRecording = async () => {
-    if (!mediaRecorderRef.current) return;
-    
-    setIsLoading(true);
-    const mediaRecorder = mediaRecorderRef.current;
-    
-    // Set up onstop handler before stopping
-    mediaRecorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    if (mediaRecorderRef.current?.state === "recording") {
       try {
-        // Convert to base64 first
-        const base64Audio = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(audioBlob);
+        // Stop recording and tracks
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        stopTimer();
+
+        setIsLoading(true);
+        
+        // Wait for the last chunk of audio data
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Create audio blob with proper MIME type
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: 'audio/webm' 
+        });
+        
+        console.log('Audio blob:', {
+          size: audioBlob.size,
+          type: audioBlob.type,
+          chunks: audioChunksRef.current.length
         });
 
-        // Send base64 audio for transcription
+        // Create FormData
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', 'whisper-1');
+
+        // Send to transcribe endpoint
         const response = await fetch('/api/transcribe', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audio: base64Audio })
+          body: formData
         });
 
         const data = await response.json();
-        if (!response.ok) throw new Error(`Error: ${data.error}`);
-        if (!data.transcription) throw new Error(`No transcription in response`);
 
-        await handleRecordingComplete(data.transcription, audioBlob);
+        if (!response.ok) {
+          console.error('Transcription API error:', data);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
-        // Stop all tracks
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        if (!data.transcription && !data.text) {
+          console.error('No transcription in response:', data);
+          throw new Error('No transcription in response');
+        }
+
+        // Create audio URL for playback
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioUrl(audioUrl);
         
+        // Use either transcription or text property
+        const transcriptionText = data.transcription || data.text;
+        await handleRecordingComplete(transcriptionText, audioBlob);
+        setShowReviewStep(true);
+
       } catch (error) {
         console.error('Transcription error:', error);
+        alert('Failed to transcribe audio. Please try again.');
       } finally {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
-    stopTimer();
-    mediaRecorder.stop();
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        resolve(base64String);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
   };
 
   const analyzeWithOpenAI = async (transcription: string) => {
@@ -149,24 +188,7 @@ export default function OpinionPage({ onNext, updateUserData }: OpinionPageProps
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: transcription,
-          prompt: `Please analyze the following English speech sample in terms of:
-
-1. Ability to Understand: Evaluate how well the speaker understands and responds to the topic.
-
-2. Ability to Communicate: Assess fluency, clarity, and effectiveness of expression.
-
-3. CEFR level: Determine the speaker's CEFR level (A1-C2) based on vocabulary, grammar, and overall communication.
-
-4. Key strengths and areas for improvement.
-
-Speech sample to analyze: "${transcription}"
-
-Please format your response with these exact headings:
-Ability to Understand:
-Ability to Communicate:
-CEFR level:
-Key strengths`
+          text: transcription
         }),
       });
 
