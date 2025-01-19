@@ -16,8 +16,8 @@ interface ContactDetailsPageProps {
   onSave?: (data: any) => void;
 }
 
-export default function ContactDetailsPage({ onNext, updateUserData }: ContactDetailsPageProps) {
-  const { language } = useLanguage();
+export default function ContactDetailsPage({ onNext, updateUserData, onLanguageChange }: ContactDetailsPageProps) {
+  const { language, setLanguage } = useLanguage();
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -118,14 +118,10 @@ export default function ContactDetailsPage({ onNext, updateUserData }: ContactDe
 
   const content = languageContent[language];
 
-  const handleLanguageChange = async (language: Language) => {
-    if (videoRef) {
-      try {
-        videoRef.pause();
-        videoRef.load();
-      } catch (error) {
-        console.error('Error handling video on language change:', error);
-      }
+  const handleLanguageChange = (newLanguage: Language) => {
+    setLanguage(newLanguage);
+    if (onLanguageChange) {
+      onLanguageChange(newLanguage);
     }
   };
 

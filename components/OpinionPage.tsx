@@ -36,17 +36,19 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
   const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(45);
   const timerRef = useRef<NodeJS.Timeout>();
+  const [error, setError] = useState<string | null>(null);
+  const [videoLoaded, setVideoLoaded] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   // Video URLs
   const videoUrls = {
-    en: "https://justindonlon.com/wp-content/uploads/2025/01/Opinion-Page2.mp4",
-    fr: "https://justindonlon.com/wp-content/uploads/2025/01/FR-Opinion-Page2.mp4"
+    en: "https://justindonlon.com/wp-content/uploads/2025/01/OpinionPage2.mp4"
   };
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
       title: "Your Opinion",
-      question: "What do you think about learning English online versus in a classroom?",
+      question: "Do you prefer working at home or at the office?",
       recordButton: "Start Recording (45s)",
       stopButton: "Stop Recording",
       processingMessage: "Processing audio...",
@@ -68,22 +70,6 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
     }
   };
 
-  useEffect(() => {
-    if (videoRef.current) {
-      try {
-        videoRef.current.play();
-      } catch (error) {
-        console.error('Error playing video:', error);
-        setAutoplayFailed(true);
-      }
-    }
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [language]);
-
   const startTimer = () => {
     setTimeLeft(45);
     if (timerRef.current) {
@@ -104,9 +90,18 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      
+      // Try different MIME types
+      let options;
+      if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        options = { mimeType: 'audio/mp4' };
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        options = { mimeType: 'audio/webm' };
+      } else {
+        options = {}; // Let browser choose
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -121,6 +116,7 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
       startTimer();
     } catch (error) {
       console.error('Error accessing microphone:', error);
+      setError('Unable to access microphone. Please ensure you have granted permission.');
     }
   };
 
@@ -137,11 +133,7 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
         setIsLoading(true);
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        const audioBlob = new Blob(audioChunksRef.current, { 
-          type: 'audio/webm' 
-        });
-
-        // First get transcription
+        const audioBlob = new Blob(audioChunksRef.current);
         const formData = new FormData();
         formData.append('file', audioBlob, 'audio.webm');
 
@@ -149,6 +141,7 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
           method: 'POST',
           body: formData
         });
+        console.log('Transcription API response:', response.status);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -166,34 +159,62 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
           },
           body: JSON.stringify({ text: transcriptionText }),
         });
+        console.log('Analysis API response:', analysisResponse.status);
 
-        if (!analysisResponse.ok) {
-          throw new Error(`Analysis error: ${analysisResponse.status}`);
+        if (analysisResponse.ok) {
+          const analysisData = await analysisResponse.json();
+          setAnalysis(analysisData.analysis);
+
+          // Get SpeechAce analysis
+          try {
+            // Create FormData for SpeechAce
+            const speechaceFormData = new FormData();
+            speechaceFormData.append('audio', audioBlob, 'audio.webm');
+            speechaceFormData.append('text', transcriptionText);
+
+            const speechaceResponse = await fetch('/api/speechace', {
+              method: 'POST',
+              body: speechaceFormData  // Send as FormData instead of JSON
+            });
+            console.log('SpeechAce API response:', speechaceResponse.status);
+
+            if (speechaceResponse.ok) {
+              const speechaceData = await speechaceResponse.json();
+
+              // Save to Supabase with both analyses
+              const userEmail = localStorage.getItem('userEmail');
+              if (!userEmail) throw new Error('No user email found');
+
+              const { error } = await supabase
+                .from('users')
+                .update({
+                  speaking_opinion_transcript: transcriptionText,
+                  speaking_openai_analysis: analysisData.analysis,
+                  speaking_speechace_analysis: speechaceData
+                })
+                .eq('email', userEmail);
+
+              if (error) throw error;
+
+              // Update local state
+              updateUserData('opinionData', {
+                transcription: transcriptionText,
+                openaiAnalysis: analysisData.analysis,
+                speechaceAnalysis: speechaceData,
+                timestamp: new Date().toISOString()
+              });
+
+              console.log('All analyses complete:', {
+                transcript: transcriptionText,
+                openaiAnalysis: analysisData.analysis,
+                speechaceAnalysis: speechaceData
+              });
+            }
+          } catch (speechaceError) {
+            console.error('SpeechAce error:', speechaceError);
+            // Continue even if SpeechAce fails
+          }
         }
-
-        const analysisData = await analysisResponse.json();
-        setAnalysis(analysisData.analysis);
-
-        // Save to Supabase
-        const userEmail = localStorage.getItem('userEmail');
-        if (!userEmail) throw new Error('No user email found');
-
-        const { error } = await supabase
-          .from('users')
-          .update({
-            opinion_transcript: transcriptionText,
-            opinion_analysis: analysisData.analysis
-          })
-          .eq('email', userEmail);
-
-        if (error) throw error;
-
-        // Update local state
-        updateUserData('opinionData', {
-          transcription: transcriptionText,
-          analysis: analysisData.analysis,
-          timestamp: new Date().toISOString()
-        });
 
       } catch (error) {
         console.error('Recording error:', error);
@@ -203,37 +224,72 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
     }
   };
 
-  const handlePlayVideo = () => {
-    if (videoRef.current) {
-      videoRef.current.play();
+  const getAnalysis = async (text: string) => {
+    try {
+      const analysisResponse = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text: text }),
+      });
+
+      if (!analysisResponse.ok) {
+        throw new Error(`Analysis error: ${analysisResponse.status}`);
+      }
+
+      const analysisData = await analysisResponse.json();
+      setAnalysis(analysisData.analysis);
+
+      // Save to Supabase
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) throw new Error('No user email found');
+
+      const { error } = await supabase
+        .from('users')
+        .update({
+          speaking_opinion_transcript: text,
+          speaking_openai_analysis: analysisData.analysis
+        })
+        .eq('email', userEmail);
+
+      if (error) throw error;
+
+      // Update local state
+      updateUserData('opinionData', {
+        transcription: text,
+        openaiAnalysis: analysisData.analysis,
+        speechaceAnalysis: null,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setError('Failed to analyze the response. Please try again.');
     }
   };
 
+  // Add useEffect for video autoplay
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play()
+        .catch(e => {
+          console.error('Video autoplay failed:', e);
+          setAutoplayFailed(true);
+        });
+    }
+  }, []); // Empty dependency array since we only want this on mount
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
-      {/* Video Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6">
-        {/* Language Toggle */}
-        <div className="flex justify-end mb-4 space-x-2">
+        <div className="flex justify-end mb-4">
           <button 
-            onClick={() => onLanguageChange?.('en')}
-            className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+            className="p-1 rounded ring-2 ring-blue-500"
           >
             <img
               src="/images/flags/gb-flag.png"
               alt="English"
-              width={32}
-              height={24}
-              className="rounded shadow-sm"
-            />
-          </button>
-          <button 
-            onClick={() => onLanguageChange?.('fr')}
-            className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
-          >
-            <img
-              src="/images/flags/fr-flag.png"
-              alt="Français"
               width={32}
               height={24}
               className="rounded shadow-sm"
@@ -248,20 +304,51 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
         <div className="w-full flex flex-col items-center">
           <video
             ref={videoRef}
-            src={videoUrls[language]}
+            src={videoUrls.en}
             playsInline
             autoPlay
             controls
-            muted={false}
             className="rounded-lg mb-6"
             width="100%"
           >
             Your browser does not support the video tag.
           </video>
           
+          {/* French Instructions Toggle */}
+          <div className="w-full flex flex-col items-center mb-6">
+            <button 
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-2"
+            >
+              {showInstructions ? 'Masquer' : 'Afficher'} les instructions en français
+              <span className="w-6 h-4 inline-flex items-center">
+                🇷
+              </span>
+            </button>
+
+            {showInstructions && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-700 animate-fadeIn mt-4">
+                <p>
+                  Merci pour vos réponses à la partie 1 et bienvenue à la partie 2 de l'audit. 
+                  La première partie évalue vos compétences en matière d'expression orale en anglais. 
+                  Votre tâche consiste à parler pendant 45 secondes. La question est la suivante : 
+                  Préférez-vous travailler à la maison ou au bureau ? Essayez de donner deux exemples 
+                  pour étayer votre opinion. Prenez le temps de réfléchir et, lorsque vous êtes prêt, 
+                  commencez votre enregistrement. Pendant que vous parlez, utilisez le schéma sur l'écran 
+                  pour vous aider à structurer vos pensées. Une bonne façon de commencer est de dire 
+                  "A mon avis..." .
+                </p>
+              </div>
+            )}
+          </div>
+
           {autoplayFailed && (
             <button 
-              onClick={handlePlayVideo}
+              onClick={() => {
+                if (videoRef.current) {
+                  videoRef.current.play();
+                }
+              }}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
             >
               <span>🔊</span> {languageContent[language].videoButton}
@@ -269,7 +356,6 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
           )}
         </div>
 
-        {/* Question and Recording Section */}
         <div className="mt-8">
           <h2 className="text-2xl font-semibold text-center mb-6">
             {languageContent[language].question}
@@ -281,61 +367,28 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
               disabled={isLoading}
               className={`
                 ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
-                text-white font-bold py-3 px-6 rounded-full transition-colors
-                flex items-center justify-center gap-2 min-w-[200px]
                 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+                text-white font-bold py-3 px-6 rounded-full transition-colors
+                flex items-center justify-center min-w-[200px]
+                mb-4
               `}
             >
-              {isLoading ? (
-                <span>{languageContent[language].processingMessage}</span>
-              ) : isRecording ? (
-                <>
-                  <span>{languageContent[language].stopButton}</span>
-                  <span>({timeLeft}s)</span>
-                </>
-              ) : (
-                <span>{languageContent[language].recordButton}</span>
-              )}
+              {isLoading ? 'Analyzing...' : 
+               isRecording ? languageContent[language].stopButton : 
+               analysis ? 'Complete' :
+               languageContent[language].recordButton}
             </button>
 
-            {isLoading && (
-              <p className="text-gray-600 text-center mt-4">
-                {languageContent[language].processingMessage}
-              </p>
+            {analysis && !isLoading && (
+              <button
+                onClick={onNext}
+                className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-colors"
+              >
+                {languageContent[language].continueButton}
+              </button>
             )}
           </div>
         </div>
-
-        {/* Analysis Section */}
-        {(transcription || analysis) && (
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-            {transcription && (
-              <div className="mb-6">
-                <h3 className="font-semibold mb-2">Your Response:</h3>
-                <p className="text-gray-700">{transcription}</p>
-              </div>
-            )}
-            
-            {analysis && (
-              <div>
-                <h3 className="font-semibold mb-2">{languageContent[language].analysisTitle}:</h3>
-                <div className="whitespace-pre-wrap text-gray-700">{analysis}</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Continue Button */}
-        {analysis && (
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={onNext}
-              className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition-colors"
-            >
-              {languageContent[language].continueButton}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

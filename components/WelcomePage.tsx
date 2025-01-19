@@ -25,7 +25,7 @@ interface WelcomePageProps {
 }
 
 export default function WelcomePage({ onNext, onLanguageChange }: WelcomePageProps) {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,77 +71,91 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
     }
   };
 
-  useEffect(() => {
-    if (videoRef.current) {
-      try {
-        videoRef.current.play();
-      } catch (error) {
-        console.error('Error playing video:', error);
-        setAutoplayFailed(true);
-      }
-    }
-  }, [language]);
-
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+      // First request permissions explicitly
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: true,
+        video: false 
       });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
+      
+      // Create MediaRecorder with specific mime type and options
+      const options = { 
+        mimeType: 'audio/webm;codecs=opus'  // Specify codec
+      };
+      
+      audioChunksRef.current = []; // Reset chunks
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.start(100);
+      // Start recording
+      mediaRecorderRef.current.start();
       setIsRecording(true);
+      
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      setError('Unable to access microphone. Please ensure you have granted permission.');
+      console.error('Recording error:', error);
+      setError('Could not access microphone. Please check permissions.');
+      setIsRecording(false);
     }
   };
 
   const stopRecording = async () => {
     if (mediaRecorderRef.current?.state === "recording") {
-      try {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setIsLoading(true);
-        
-        const audioBlob = new Blob(audioChunksRef.current, { 
-          type: 'audio/webm' 
-        });
+      mediaRecorderRef.current.onstop = async () => {
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'recording.webm');
 
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.webm');
+          setIsLoading(true);
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData
+          });
 
-        const response = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: formData
-        });
+          if (!response.ok) throw new Error('Transcription failed');
+          
+          const data = await response.json();
+          setUserTranscript(data.transcription);
+          
+          // Use oliver-chat instead of chat to get voice response
+          setIsThinking(true);
+          const chatResponse = await fetch('/api/oliver-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: data.transcription })
+          });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          if (!chatResponse.ok) throw new Error('Chat response failed');
+          
+          const chatData = await chatResponse.json();
+          setOliverResponse(chatData.response);
+
+          // Play Oliver's voice response
+          if (chatData.audioUrl) {
+            const audio = new Audio(chatData.audioUrl);
+            setIsSpeaking(true);
+            audio.onended = () => setIsSpeaking(false);
+            await audio.play();
+          }
+          
+        } catch (error) {
+          console.error('Processing error:', error);
+          setError('Failed to process audio. Please try again.');
+        } finally {
+          setIsLoading(false);
+          setIsThinking(false);
         }
+      };
 
-        const data = await response.json();
-        const transcriptionText = data.transcription || data.text;
-        setUserTranscript(transcriptionText);
-
-        // Get Oliver's response
-        await getOliverResponse(transcriptionText);
-
-      } catch (error) {
-        console.error('Transcription error:', error);
-        setError('Failed to transcribe audio. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
 
@@ -195,23 +209,30 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
 
   const handlePlayVideo = () => {
     if (videoRef.current) {
-      videoRef.current.play();
+      videoRef.current.muted = false;
+      videoRef.current.play()
+        .catch(e => {
+          console.log('Video play failed:', e);
+          setAutoplayFailed(true);
+        });
     }
   };
 
-  const handleLanguageChange = async (newLanguage: Language) => {
-    if (videoRef.current) {
-      try {
-        videoRef.current.pause();
-        videoRef.current.load();
-      } catch (error) {
-        console.error('Error handling video on language change:', error);
-      }
-    }
+  const handleLanguageChange = (newLanguage: Language) => {
+    setLanguage(newLanguage);
     if (onLanguageChange) {
       onLanguageChange(newLanguage);
     }
   };
+
+  // Add useEffect to handle video source changes
+  useEffect(() => {
+    if (videoRef.current) {
+      // Force video to reload when language changes
+      videoRef.current.load();
+      console.log('Video source changed to:', videoUrls[language]);
+    }
+  }, [language]);
 
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col items-center">
@@ -262,15 +283,20 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
 
         {/* Video Player */}
         <div className="w-full flex justify-center mb-6">
-          <video 
+          <video
             ref={videoRef}
             width="800"
             height="400"
             controls
             playsInline
             className="rounded-lg"
+            key={language}
           >
-            <source src={videoUrls[language]} type="video/mp4" />
+            <source 
+              src={videoUrls[language]} 
+              type="video/mp4"
+              onError={(e) => console.error('Video source error:', e)}
+            />
             Your browser does not support the video tag.
           </video>
         </div>
@@ -372,14 +398,14 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
         <div className="flex flex-col items-center mt-6">
           <div className="flex items-center justify-center space-x-4 w-full">
             <button
-              onClick={stopRecording}
+              onClick={isRecording ? stopRecording : startRecording}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
               disabled={isLoading}
             >
               {isRecording ? (
                 <>
-                  <span className="animate-pulse">⏺</span>
-                  Stop
+                  <div className="recording-pulse" />
+                  Stop Recording
                 </>
               ) : (
                 <>

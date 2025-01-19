@@ -47,6 +47,7 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
   const [transcriptHistory, setTranscriptHistory] = useState<TranscriptItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [userTranscript, setUserTranscript] = useState<string>('');
 
   // Video URLs
   const videoUrls = {
@@ -104,74 +105,104 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: true,
+        video: false 
       });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (event) => {
+      // Specify the correct MIME type that OpenAI accepts
+      const options = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 128000
+      };
+
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = new MediaRecorder(stream, options);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.start(100);
+      mediaRecorderRef.current.start();
       setIsRecording(true);
+
     } catch (error) {
-      console.error('Error accessing microphone:', error);
-      setError('Unable to access microphone. Please ensure you have granted permission.');
+      console.error('Recording error:', error);
+      setError('Could not access microphone. Please check permissions.');
+      setIsRecording(false);
     }
   };
 
   const stopRecording = async () => {
     if (mediaRecorderRef.current?.state === "recording") {
-      try {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-        setIsRecording(false);
-        setIsLoading(true);
-        
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        const audioBlob = new Blob(audioChunksRef.current, { 
-          type: 'audio/webm' 
-        });
+      mediaRecorderRef.current.onstop = async () => {
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { 
+            type: 'audio/webm' 
+          });
+          
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'recording.webm');
 
-        const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.webm');
+          setIsLoading(true);
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData
+          });
 
-        const response = await fetch('/api/transcribe', {
-          method: 'POST',
-          body: formData
-        });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          const transcriptionText = data.transcription || data.text;
+          setUserTranscript(transcriptionText);
+
+          // Get analysis
+          await getAnalysis(transcriptionText);
+
+        } catch (error) {
+          console.error('Transcription error:', error);
+          setError('Failed to transcribe audio. Please try again.');
+        } finally {
+          setIsLoading(false);
         }
+      };
 
-        const data = await response.json();
-        handleTranscriptionComplete(data.transcription || data.text);
-
-      } catch (error) {
-        console.error('Transcription error:', error);
-        setError('Failed to transcribe audio. Please try again.');
-      } finally {
-        setIsLoading(false);
-      }
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
   };
 
-  const handleTranscriptionComplete = (transcriptionText: string) => {
-    const newTranscript: TranscriptItem = {
-      speaker: 'user',
-      text: transcriptionText,
-      timestamp: new Date().toISOString(),
-      language
-    };
+  const getAnalysis = async (text: string) => {
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
 
-    setTranscriptHistory(prev => [...prev, newTranscript]);
+      if (!response.ok) {
+        throw new Error('Analysis failed');
+      }
+
+      const data = await response.json();
+      if (data.analysis) {
+        const newTranscript: TranscriptItem = {
+          speaker: 'user',
+          text: text,
+          timestamp: new Date().toISOString(),
+          language
+        };
+        setTranscriptHistory(prev => [...prev, newTranscript]);
+      }
+    } catch (error) {
+      console.error('Analysis error:', error);
+      setError('Failed to analyze response. Please try again.');
+    }
   };
 
   const handleSaveTranscripts = async () => {
@@ -273,19 +304,21 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
             </h3>
             <div className="flex flex-col items-center">
               <button
-                onClick={startRecording}
+                onClick={isRecording ? stopRecording : startRecording}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
                 disabled={isLoading}
-                className={`
-                  ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
-                  ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-                  text-white font-bold py-3 px-6 rounded-full transition-colors
-                  flex items-center justify-center min-w-[200px]
-                  mb-4
-                `}
               >
-                {isLoading ? languageContent[language].processingMessage : 
-                 isRecording ? languageContent[language].stopButton : 
-                 languageContent[language].recordButton}
+                {isRecording ? (
+                  <>
+                    <span className="animate-pulse">⏺</span>
+                    Stop Recording
+                  </>
+                ) : (
+                  <>
+                    <span>🎤</span>
+                    Record Your Answer
+                  </>
+                )}
               </button>
 
               {isLoading && (

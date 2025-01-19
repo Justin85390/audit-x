@@ -98,6 +98,9 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
   const [expandedQuestions, setExpandedQuestions] = useState<number[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<{ [key: number]: number | null }>({});
 
+  // Add state for instructions
+  const [showInstructions, setShowInstructions] = useState(false);
+
   const toggleQuestion = (questionIndex: number) => {
     setExpandedQuestions(current =>
       current.includes(questionIndex)
@@ -213,7 +216,7 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
             playsInline
             autoPlay
             controls
-            className="rounded-lg"
+            className="rounded-lg mb-8"
             width="100%"
           >
             Your browser does not support the video tag.
@@ -222,11 +225,33 @@ export default function ReadingComprehensionPage({ onNext, updateUserData }: Rea
           {!videoStarted && (
             <button 
               onClick={handlePlayVideo}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full flex items-center gap-2 mx-auto mt-4 mb-8"
             >
               <span>▶️</span> Play Video With Sound
             </button>
           )}
+
+          {/* French Instructions Toggle */}
+          <div className="w-full flex flex-col items-center mb-6 mt-4">
+            <button 
+              onClick={() => setShowInstructions(!showInstructions)}
+              className="text-blue-500 hover:text-blue-600 inline-flex items-center gap-2"
+            >
+              {showInstructions ? 'Masquer' : 'Afficher'} les instructions en français
+              <span className="w-6 h-4 inline-flex items-center">
+                🇷
+              </span>
+            </button>
+
+            {showInstructions && (
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm text-gray-700 animate-fadeIn mt-4">
+                <p>
+                  Ensuite, pour l'évaluation de lecture, le texte ci-dessous porte sur une conférence internationale. 
+                  Prenez le temps de lire le texte, puis répondez aux 6 questions.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
