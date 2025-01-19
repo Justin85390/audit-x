@@ -82,4 +82,11 @@ export interface FormData {
   timeCommitment: string;
   motivation: string[];
   interests: string[];
+}
+
+export interface TranscriptItem {
+  speaker: 'user' | 'oliver';
+  text: string;
+  timestamp: string;
+  language: Language;
 } 

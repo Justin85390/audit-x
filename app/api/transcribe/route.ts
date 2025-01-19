@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Create new FormData for OpenAI
+    // Create FormData for OpenAI
     const openAIFormData = new FormData();
     openAIFormData.append('file', file);
     openAIFormData.append('model', 'whisper-1');
@@ -88,4 +88,6 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-} 
+}
+
+export const runtime = 'edge'; 

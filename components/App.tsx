@@ -8,6 +8,7 @@ import ListeningComprehensionPage from './ListeningComprehensionPage'
 import ReadingComprehensionPage from './ReadingComprehensionPage'
 import WritingPage from './WritingPage'
 import ReportPage from './ReportPage'
+import NeedsAnalysisPage from './NeedsAnalysisPage'
 
 // Define more specific interfaces for your data
 interface ContactDetails {
@@ -111,20 +112,21 @@ export default function App() {
       case 2:
         return <ContactDetailsPage onNext={nextPage} updateUserData={updateUserData} />
       case 3:
-        return <LearnerDataPage onNext={nextPage} updateUserData={updateUserData} />
+        return <NeedsAnalysisPage onNext={nextPage} updateUserData={updateUserData} />
       case 4:
-        return <SpeakingPage onNext={nextPage} updateUserData={updateUserData} />
+        return <LearnerDataPage onNext={nextPage} updateUserData={updateUserData} />
       case 5:
-        return <OpinionPage onNext={nextPage} updateUserData={updateUserData} />
+        return <SpeakingPage onNext={nextPage} updateUserData={updateUserData} />
       case 6:
-        return <ListeningComprehensionPage onNext={nextPage} updateUserData={updateUserData} />
+        return <OpinionPage onNext={nextPage} updateUserData={updateUserData} />
       case 7:
-        return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />
+        return <ListeningComprehensionPage onNext={nextPage} updateUserData={updateUserData} />
       case 8:
-        return <WritingPage onNext={nextPage} updateUserData={updateUserData} />
+        return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />
       case 9:
+        return <WritingPage onNext={nextPage} updateUserData={updateUserData} />
+      case 10:
         return <ReportPage 
-          userData={userData}
           onNext={nextPage}
           updateUserData={updateUserData}
         />

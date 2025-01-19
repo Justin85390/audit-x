@@ -9,7 +9,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Make direct fetch call to OpenAI API using chat completions
+    // Direct OpenAI chat completion call
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -23,20 +23,7 @@ export async function POST(req: Request) {
           content: "You are a professional language assessor."
         }, {
           role: "user",
-          content: `Please analyze the following English speech sample in terms of:
-
-1. Ability to Understand: Evaluate how well the speaker understands and responds to the topic.
-2. Ability to Communicate: Assess fluency, clarity, and effectiveness of expression.
-3. CEFR level: Determine the speaker's CEFR level (A1-C2) based on vocabulary, grammar, and overall communication.
-4. Key strengths and areas for improvement.
-
-Speech sample to analyze: "${body.text}"
-
-Please format your response with these exact headings:
-Ability to Understand:
-Ability to Communicate:
-CEFR level:
-Key strengths`
+          content: `Please analyze this English speech sample: "${body.text}"`
         }],
         temperature: 0.7,
       })

@@ -1,47 +1,50 @@
+'use client';
+
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import InputField from './shared/InputField';
 import AIAnimation from './shared/AIAnimation';
 import { useLanguage } from '../app/contexts/LanguageContext';
-
-interface WelcomePageProps {
-  onNext: () => void;
-  onLanguageChange?: (language: Language) => void;
-}
+import { Language } from '@/types';
 
 interface LanguageContent {
   title: string;
   journey: string;
   playButton: string;
   readyButton: string;
-  videoUrl: string;
+  askOliver: string;
+  typingPlaceholder: string;
+  processingMessage: string;
+  defaultGreeting: string;
+  suggestedQuestion: string;
 }
 
-type Language = 'en' | 'fr';
+interface WelcomePageProps {
+  onNext: () => void;
+  onLanguageChange?: (language: Language) => void;
+}
 
-const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) => {
+export default function WelcomePage({ onNext, onLanguageChange }: WelcomePageProps) {
+  const { language } = useLanguage();
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [oliverResponse, setOliverResponse] = useState<string>('');
   const [userTranscript, setUserTranscript] = useState<string>('');
   const [userQuestion, setUserQuestion] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [transcription, setTranscription] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [languageIndex, setLanguageIndex] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [autoplayFailed, setAutoplayFailed] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const { language, setLanguage } = useLanguage();
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-  const translations = [
-    { text: "Oliver speaks many languages. Ask him in your language", lang: "en" },
-    { text: "Oliver habla varios idiomas. Pregúntale en tu idioma", lang: "es" },
-    { text: "Oliver parle plusieurs langues. Posez-lui des questions dans votre langue", lang: "fr" },
-    { text: "Oliver spricht viele Sprachen. Fragen Sie ihn in Ihrer Sprache", lang: "de" }
-  ];
+  // Video URLs
+  const videoUrls = {
+    en: "https://justindonlon.com/wp-content/uploads/2025/01/Welcome-Page2.mp4",
+    fr: "https://justindonlon.com/wp-content/uploads/2025/01/FR-Welcome-Page2.mp4"
+  };
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
@@ -49,45 +52,37 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
       journey: "Your journey starts with just a few questions. Press \"Ready\" to begin.",
       playButton: "Play Video",
       readyButton: "Ready",
-      videoUrl: "https://justindonlon.com/wp-content/uploads/2025/01/Welcome-Page2.mp4"
+      askOliver: "Ask Oliver",
+      typingPlaceholder: "Type your question for Oliver...",
+      processingMessage: "Processing...",
+      defaultGreeting: "Hello! I'm Oliver, your language audit assistant. How can I help you today?",
+      suggestedQuestion: "Ask about the audit"
     },
     fr: {
       title: "Bienvenue chez Linguaphone",
       journey: "Votre parcours commence par quelques questions. Appuyez sur \"Prêt\" pour commencer.",
       playButton: "Lire la Vidéo",
       readyButton: "Prêt",
-      videoUrl: "https://justindonlon.com/wp-content/uploads/2025/01/FR-Welcome-Page2.mp4"
+      askOliver: "Demander à Oliver",
+      typingPlaceholder: "Tapez votre question pour Oliver...",
+      processingMessage: "Traitement en cours...",
+      defaultGreeting: "Bonjour! Je suis Oliver, votre assistant d'audit linguistique. Comment puis-je vous aider?",
+      suggestedQuestion: "Demander à propos de l'audit"
     }
   };
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setLanguageIndex((current) => (current + 1) % translations.length);
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, [translations.length]);
-
-  useEffect(() => {
-    const loadVoices = () => {
-      setVoices(window.speechSynthesis.getVoices());
-    };
-
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
+    if (videoRef.current) {
+      try {
+        videoRef.current.play();
+      } catch (error) {
+        console.error('Error playing video:', error);
+        setAutoplayFailed(true);
+      }
+    }
+  }, [language]);
 
   const startRecording = async () => {
-    console.log("Starting recording for Oliver...");
-    if (mediaRecorderRef.current?.state === "recording") {
-      console.error("Another recording is already in progress.");
-      return;
-    }
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream, {
@@ -102,72 +97,63 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        console.log("Stopping recording for Oliver...");
-        try {
-          const audioBlob = new Blob(audioChunksRef.current, { 
-            type: 'audio/webm' 
-          });
-          console.log('Audio blob:', {
-            size: audioBlob.size,
-            type: audioBlob.type,
-            chunks: audioChunksRef.current.length
-          });
-          setIsRecording(false);
-
-          // Send audioBlob to Google Cloud API for transcription
-          await sendToGoogleCloudOliver(audioBlob);
-        } catch (error) {
-          console.error('Error processing audio:', error);
-        }
-      };
-
       mediaRecorder.start(100);
       setIsRecording(true);
-    } catch (err) {
-      console.error('Error accessing microphone:', err);
-      setIsRecording(false);
-      alert('An error occurred while accessing the microphone. Please check your browser settings.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (isRecording && mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    } else {
-      console.error("No active Oliver recording found to stop.");
-      alert('No active Oliver recording found to stop.');
-    }
-  };
-
-  const handleToggleRecording = async () => {
-    console.log("toggleRecordingOliver function called");
-    try {
-      if (isRecording) {
-        setIsLoading(true);
-        stopRecording();
-      } else {
-        await startRecording();
-      }
     } catch (error) {
-      console.error('Recording error:', error);
-      setIsLoading(false);
+      console.error('Error accessing microphone:', error);
+      setError('Unable to access microphone. Please ensure you have granted permission.');
     }
   };
 
-  const sendToGoogleCloudOliver = async (audioBlob: Blob): Promise<string> => {
+  const stopRecording = async () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      try {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+        setIsLoading(true);
+        
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: 'audio/webm' 
+        });
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+
+        const response = await fetch('/api/transcribe', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const transcriptionText = data.transcription || data.text;
+        setUserTranscript(transcriptionText);
+
+        // Get Oliver's response
+        await getOliverResponse(transcriptionText);
+
+      } catch (error) {
+        console.error('Transcription error:', error);
+        setError('Failed to transcribe audio. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const getOliverResponse = async (text: string) => {
     try {
-      setIsLoading(true);
       setIsThinking(true);
-
-      // First get transcription
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.webm');
-      formData.append('model', 'whisper-1');
-
-      const response = await fetch('/api/oliver-analyze', {
+      const response = await fetch('/api/oliver-chat', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text, isTyped: true }),
       });
 
       if (!response.ok) {
@@ -175,180 +161,45 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
       }
 
       const data = await response.json();
-      const transcription = data.transcription || data.text;
-      setUserTranscript(transcription);
+      setOliverResponse(data.response);
 
-      // Then get Oliver's response
-      const chatResponse = await fetch('/api/oliver-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: transcription,
-          isTyped: true,
-          emotion: 'friendly'
-        }),
-      });
-
-      if (!chatResponse.ok) {
-        throw new Error(`Server error: ${chatResponse.status}`);
-      }
-
-      const chatData = await chatResponse.json();
-      setOliverResponse(chatData.response);
-
-      // Play Oliver's response
-      if (chatData.audioUrl) {
-        const audio = new Audio(chatData.audioUrl);
+      if (data.audioUrl) {
+        const audio = new Audio(data.audioUrl);
         setIsSpeaking(true);
         audio.onended = () => setIsSpeaking(false);
         await audio.play();
       }
-
-      return chatData.response;
-
     } catch (error) {
-      console.error('Detailed transcription error:', error);
-      throw error;
+      console.error('Error getting Oliver response:', error);
+      setError('Failed to get Oliver\'s response. Please try again.');
     } finally {
-      setIsLoading(false);
       setIsThinking(false);
     }
   };
 
   const handleSendTypedQuestion = async () => {
-    try {
-      setIsThinking(true);
-      setIsLoading(true);
-      console.log("Sending typed question:", userQuestion);
-      setUserTranscript(userQuestion);
-
-      // Use the chat endpoint for typed questions
-      const response = await fetch('/api/oliver-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: userQuestion,
-          isTyped: true,
-          emotion: 'friendly'
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process question');
-      }
-
-      console.log("Server response:", data);
-      setOliverResponse(data.response);
-
-      // Play Oliver's response
-      if (data.audioUrl) {
-        const audio = new Audio(data.audioUrl);
-        setIsSpeaking(true);
-        audio.onended = () => setIsSpeaking(false);
-        await audio.play();
-      }
-
-      // Clear the input after sending
-      setUserQuestion('');
-
-    } catch (error) {
-      console.error('Error sending typed question:', error);
-      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
-    } finally {
-      setIsLoading(false);
-      setIsThinking(false);
-    }
-  };
-
-  const handleSuggestionClick = async () => {
-    const question = "Tell me about the language audit";
-    setUserQuestion(question);
-    setUserTranscript(question);
+    if (!userQuestion.trim()) return;
     
     try {
       setIsLoading(true);
-      const response = await fetch('/api/oliver-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: question,
-          isTyped: true
-        })
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process question');
-      }
-
-      setOliverResponse(data.response);
-      if (data.audioUrl) {
-        const audio = new Audio(data.audioUrl);
-        setIsSpeaking(true);
-        audio.onended = () => setIsSpeaking(false);
-        await audio.play();
-      }
+      setUserTranscript(userQuestion);
+      await getOliverResponse(userQuestion);
+      setUserQuestion('');
     } catch (error) {
-      console.error('Error:', error);
-      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
+      console.error('Error sending question:', error);
+      setError('Failed to send question. Please try again.');
     } finally {
       setIsLoading(false);
-      setUserQuestion('');
     }
   };
 
-  const sendToOpenAI = async (transcription: string) => {
-    try {
-      // Send to /api/transcribe for voice response
-      const response = await fetch('/api/transcribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: transcription,
-          isTyped: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setOliverResponse(data.response);
-
-      // Play audio if available
-      if (data.audioUrl) {
-        const audio = new Audio(data.audioUrl);
-        await audio.play();
-      }
-    } catch (error) {
-      console.error('OpenAI error:', error);
-      setOliverResponse(error instanceof Error ? error.message : 'An unknown error occurred');
-    }
-  };
-
-  const handlePlayVideo = async () => {
-    try {
-      if (videoRef.current) {
-        await videoRef.current.play();
-      }
-    } catch (error) {
-      console.error('Error playing video:', error);
+  const handlePlayVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
     }
   };
 
   const handleLanguageChange = async (newLanguage: Language) => {
-    setLanguage(newLanguage);
     if (videoRef.current) {
       try {
         videoRef.current.pause();
@@ -419,7 +270,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
             playsInline
             className="rounded-lg"
           >
-            <source src={languageContent[language].videoUrl} type="video/mp4" />
+            <source src={videoUrls[language]} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>
@@ -467,9 +318,6 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
               <h4 className="text-sm text-gray-500 mt-2">
                 Type in the box below or ask me a question with "Ask Oliver"
               </h4>
-              <p className="text-sm mt-2 bg-yellow-50 px-3 py-1 rounded-lg inline-block transition-opacity duration-500">
-                {translations[languageIndex].text}
-              </p>
             </div>
           </div>
         </div>
@@ -482,7 +330,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
               <InputField
                 value={userQuestion}
                 onChange={(e) => setUserQuestion(e.target.value)}
-                placeholder="Type your question for Oliver..."
+                placeholder={languageContent[language].typingPlaceholder}
                 className="flex-grow"
               />
               {userQuestion && (
@@ -490,19 +338,19 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
                   className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-full"
                   onClick={handleSendTypedQuestion}
                 >
-                  Send
+                  {languageContent[language].askOliver}
                 </button>
               )}
             </div>
             
             {/* Suggestion Bubble */}
             <button 
-              onClick={handleSuggestionClick}
+              onClick={() => setUserQuestion(languageContent[language].suggestedQuestion)}
               className="self-start px-4 py-2 my-4 bg-yellow-50 hover:bg-yellow-100 
                 rounded-2xl text-gray-600 text-sm transition-colors duration-200 
                 flex items-center gap-2 shadow-sm border border-yellow-100"
             >
-              💭 Ask about the audit
+              💭 {languageContent[language].suggestedQuestion}
             </button>
           </div>
 
@@ -516,7 +364,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
           
           {/* Oliver's response */}
           <div className="bg-white p-4 rounded-lg border border-gray-200">
-            {oliverResponse || 'Hello! How can I help you today?'}
+            {oliverResponse || languageContent[language].defaultGreeting}
           </div>
         </div>
 
@@ -524,7 +372,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
         <div className="flex flex-col items-center mt-6">
           <div className="flex items-center justify-center space-x-4 w-full">
             <button
-              onClick={handleToggleRecording}
+              onClick={stopRecording}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
               disabled={isLoading}
             >
@@ -536,7 +384,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
               ) : (
                 <>
                   <span>🎤</span>
-                  Ask Oliver
+                  {languageContent[language].askOliver}
                 </>
               )}
             </button>
@@ -549,10 +397,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
 
             {isLoading && (
               <div className="text-gray-600 flex items-center ml-4 whitespace-nowrap">
-                <span>Thinking</span>
-                <span className="inline-block animate-bounce ml-1">.</span>
-                <span className="inline-block animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
-                <span className="inline-block animate-bounce" style={{ animationDelay: '0.4s' }}>.</span>
+                <span>{languageContent[language].processingMessage}</span>
               </div>
             )}
           </div>
@@ -560,6 +405,4 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ onNext, onLanguageChange }) =
       </div>
     </div>
   );
-};
-
-export default WelcomePage;
+}
