@@ -1,3 +1,6 @@
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     // Log the content type we're receiving
@@ -62,6 +65,4 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' }
     });
   }
-}
-
-export const runtime = 'edge'; 
+} 
