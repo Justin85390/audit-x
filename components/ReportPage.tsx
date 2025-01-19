@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Language } from '@/types';
+import { Language, UserData } from '@/types';
 
 interface ReportPageProps {
   onNext: () => void;
   updateUserData: (key: string, value: any) => void;
+  userData?: UserData;
 }
 
-export default function ReportPage({ onNext, updateUserData }: ReportPageProps) {
+export default function ReportPage({ onNext, updateUserData, userData }: ReportPageProps) {
   const [currentLanguage, setCurrentLanguage] = useState<Language>('en');
   const [videoStarted, setVideoStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
