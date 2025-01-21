@@ -4,31 +4,23 @@ export interface UserData {
   contactDetails: {
     name: string;
     email: string;
-  };
-  learnerData: {
-    timeToLearn: string;
-    motivation: string[];
-    interests: string[];
-    device: string[];
-    contentType: string[];
-    classroomFormat: string[];
+    assessmentDate: string;
   };
   speakingData: {
-    transcripts: Array<{
-      text: string;
-      timestamp: string;
-    }>;
-    timestamp: string;
-  };
-  opinionData: {
-    transcription: string;
-    analysis: string;
-    speechAceAnalysis: any;
-    timestamp: string;
+    difficulties_transcript: string;
+    opinion_transcript: string;
+    openai_analysis: string;
+    speechace_analysis: any;
+    speechaceScores?: SpeechaceScores;
+    cefrLevel: string;
+    cefrDetails: string;
   };
   listeningScore: number;
   readingScore: number;
-  writingScore: number;
+  writingData: {
+    submission: string;
+    analysis: string;
+  };
 }
 
 export type UpdateUserDataFunction = (key: string, value: any) => void;
@@ -89,4 +81,42 @@ export interface TranscriptItem {
   text: string;
   timestamp: string;
   language: Language;
+}
+
+export interface SpeechaceScores {
+  raw: {
+    pronunciation: number;
+    fluency: number;
+    vocabulary: number;
+    grammar: number;
+    overall: number;
+  };
+  normalized: {
+    pronunciation: number;
+    fluency: number;
+    vocabulary: number;
+    grammar: number;
+    overall: number;
+  };
+  cefr: {
+    level: string;
+    description: string;
+  };
+  metadata: {
+    scoringVersion: string;
+    scoringDate: string;
+    scoringMethod: string;
+  };
+  technicalDetails: {
+    wordScores: Array<{
+      word: string;
+      qualityScore: number;
+      phoneticDetails?: any;
+    }>;
+    pausePatterns?: Array<{
+      duration: number;
+      position: number;
+    }>;
+    speechRate?: number;
+  };
 } 

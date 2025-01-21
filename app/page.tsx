@@ -125,7 +125,6 @@ export default function Home() {
         return <ReportPage 
           onNext={handleNext}
           updateUserData={updateUserData}
-          userData={userData}
         />;
       default:
         return <div>Page not found</div>;

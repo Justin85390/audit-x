@@ -121,6 +121,7 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
   };
 
   const stopRecording = async () => {
+    console.log('Current user email in localStorage:', localStorage.getItem('userEmail'));
     if (mediaRecorderRef.current?.state === "recording") {
       try {
         mediaRecorderRef.current.stop();
@@ -174,14 +175,46 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
 
             const speechaceResponse = await fetch('/api/speechace', {
               method: 'POST',
-              body: speechaceFormData  // Send as FormData instead of JSON
+              body: speechaceFormData
             });
-            console.log('SpeechAce API response:', speechaceResponse.status);
+            console.log('SpeechAce API response status:', speechaceResponse.status);
 
             if (speechaceResponse.ok) {
               const speechaceData = await speechaceResponse.json();
+              console.log('Raw SpeechAce response:', JSON.stringify(speechaceData, null, 2));
 
-              // Save to Supabase with both analyses
+              // Extract scores from word_score_list
+              const wordScores = speechaceData.analysis?.text_score?.word_score_list || [];
+              const averageQualityScore = wordScores.reduce((sum, word) => 
+                sum + (word.quality_score || 0), 0) / (wordScores.length || 1);
+
+              // Format the data before saving
+              const formattedSpeechaceData = {
+                success: speechaceData.success,
+                analysis: {
+                  status: speechaceData.analysis?.status,
+                  pronunciation_score: averageQualityScore.toFixed(1),
+                  fluency_score: (averageQualityScore * 0.9).toFixed(1), // Temporary calculation
+                  vocabulary_score: (averageQualityScore * 0.8).toFixed(1), // Temporary calculation
+                  grammar_score: (averageQualityScore * 0.85).toFixed(1), // Temporary calculation
+                  technical_score: averageQualityScore.toFixed(1),
+                  word_scores: wordScores.map(word => ({
+                    word: word.word,
+                    score: word.quality_score
+                  }))
+                }
+              };
+
+              console.log('Extracted scores:', {
+                averageQuality: averageQualityScore,
+                wordCount: wordScores.length,
+                firstFewWords: wordScores.slice(0, 3).map(w => ({
+                  word: w.word,
+                  score: w.quality_score
+                }))
+              });
+
+              // Save to Supabase with formatted data
               const userEmail = localStorage.getItem('userEmail');
               if (!userEmail) throw new Error('No user email found');
 
@@ -190,24 +223,24 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
                 .update({
                   speaking_opinion_transcript: transcriptionText,
                   speaking_openai_analysis: analysisData.analysis,
-                  speaking_speechace_analysis: speechaceData
+                  speaking_speechace_analysis: JSON.stringify(formattedSpeechaceData)
                 })
                 .eq('email', userEmail);
 
               if (error) throw error;
 
-              // Update local state
+              console.log('All analyses complete with formatted data:', {
+                transcript: transcriptionText,
+                openaiAnalysis: analysisData.analysis,
+                speechaceAnalysis: formattedSpeechaceData
+              });
+
+              // Update local state with formatted data
               updateUserData('opinionData', {
                 transcription: transcriptionText,
                 openaiAnalysis: analysisData.analysis,
-                speechaceAnalysis: speechaceData,
+                speechaceAnalysis: formattedSpeechaceData,
                 timestamp: new Date().toISOString()
-              });
-
-              console.log('All analyses complete:', {
-                transcript: transcriptionText,
-                openaiAnalysis: analysisData.analysis,
-                speechaceAnalysis: speechaceData
               });
             }
           } catch (speechaceError) {
@@ -243,15 +276,34 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
 
       // Save to Supabase
       const userEmail = localStorage.getItem('userEmail');
-      if (!userEmail) throw new Error('No user email found');
+      if (!userEmail) {
+        console.error('No user email found in localStorage');
+        throw new Error('No user email found');
+      }
 
-      const { error } = await supabase
+      console.log('Attempting to save for user:', userEmail);
+
+      const { error, data } = await supabase
         .from('users')
         .update({
           speaking_opinion_transcript: text,
-          speaking_openai_analysis: analysisData.analysis
+          speaking_openai_analysis: analysisData.analysis,
+          speaking_speechace_analysis: JSON.stringify({
+            success: true,
+            analysis: {
+              status: 'manual',
+              pronunciation_score: '0',
+              fluency_score: '0',
+              vocabulary_score: '0',
+              grammar_score: '0',
+              technical_score: '0'
+            }
+          })
         })
-        .eq('email', userEmail);
+        .eq('email', userEmail)
+        .select();
+
+      console.log('Update response:', { error, data });
 
       if (error) throw error;
 

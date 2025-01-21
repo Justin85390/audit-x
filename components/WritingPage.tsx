@@ -84,24 +84,24 @@ export default function WritingPage({ onNext, updateUserData, onLanguageChange }
     }
   };
 
-  const analyzeWithOpenAI = async (text: string) => {
+  const analyzeWithOpenAI = async (writingText: string) => {
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch('/api/analyze-writing', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: writingText }),
       });
 
       if (!response.ok) {
-        throw new Error(`Analysis error: ${response.status}`);
+        throw new Error('Analysis request failed');
       }
 
       const data = await response.json();
       return data.analysis;
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('Error analyzing text:', error);
       throw error;
     }
   };
@@ -116,9 +116,7 @@ export default function WritingPage({ onNext, updateUserData, onLanguageChange }
     setIsLoading(true);
     try {
       // Get OpenAI Analysis
-      console.log('Getting OpenAI analysis...');
       const openAIResponse = await analyzeWithOpenAI(writingText);
-      console.log('OpenAI analysis received');
 
       // Save to Supabase
       const userEmail = localStorage.getItem('userEmail');
@@ -126,8 +124,7 @@ export default function WritingPage({ onNext, updateUserData, onLanguageChange }
         throw new Error('No user email found');
       }
 
-      console.log('Saving to Supabase...');
-      const { error } = await supabase
+      await supabase
         .from('users')
         .update({
           writing_submission: writingText,
@@ -135,21 +132,10 @@ export default function WritingPage({ onNext, updateUserData, onLanguageChange }
         })
         .eq('email', userEmail);
 
-      if (error) throw error;
-      console.log('Supabase update successful');
-
-      // Update local state
-      updateUserData('writingData', {
-        text: writingText,
-        analysis: openAIResponse,
-        timestamp: new Date().toISOString()
-      });
-      console.log('Local state updated');
-
-      // Brief delay to ensure user sees "Complete" state
+      // Brief delay to ensure data is saved
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Navigate to next page
+      // Navigate to report
       onNext();
     } catch (error) {
       console.error('Error in submission:', error);

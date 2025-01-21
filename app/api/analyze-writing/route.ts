@@ -12,7 +12,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Direct fetch to OpenAI API
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -26,17 +25,16 @@ export async function POST(req: Request) {
           content: "You are a professional language assessor specializing in CEFR (Common European Framework of Reference for Languages) evaluation."
         }, {
           role: "user",
-          content: `Please analyze this English speaking sample and provide:
-1. A clear opening sentence about the speaker's overall fluency and confidence
+          content: `Please analyze this English writing sample and provide:
+1. A clear opening sentence summarizing the overall writing quality
 2. A CEFR level assessment (A1-C2) with brief justification
 3. A detailed analysis of:
-   - Pronunciation and intonation
-   - Fluency and pace
-   - Vocabulary use and range
-   - Grammar accuracy
-   - Communication effectiveness
+   - Grammar and structure
+   - Vocabulary range and accuracy
+   - Text organization and coherence
+   - Task achievement
 
-Speaking sample: "${body.text}"`
+Writing sample: "${body.text}"`
         }],
         temperature: 0.7,
       })
@@ -63,4 +61,4 @@ Speaking sample: "${body.text}"`
       headers: { 'Content-Type': 'application/json' }
     });
   }
-}
+} 
