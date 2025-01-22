@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+interface Params {
+  id: string;
+}
+
 // Next.js route handlers use this exact type signature
 export async function DELETE(
-  request: NextRequest,
-  context: {
-    params: {
-      id: string;
-    };
-  }
+  _req: NextRequest,
+  { params }: { params: Params }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const { error } = await supabase
       .from('users')
       .delete()
