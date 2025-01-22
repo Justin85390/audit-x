@@ -8,6 +8,22 @@ import { transformDatabaseData } from '@/app/utils/transformDatabaseData';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';  // For better table formatting
 
+interface AutoTableOptions {
+  startY: number;
+  head?: any[][];
+  body: any[][];
+  margin?: { left: number; right?: number };
+}
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: AutoTableOptions) => void;
+    lastAutoTable: {
+      finalY: number;
+    };
+  }
+}
+
 interface ReportPageProps {
   onNext: () => void;
   updateUserData: (key: string, value: any) => void;
@@ -20,8 +36,9 @@ const CEFR_LEVELS = {
   'B1': 3,
   'B2': 4,
   'C1': 5,
-  'C2': 6
-};
+  'C2': 6,
+  'C1-C2': 5.5
+} as const;
 
 const CEFR_NUMERICAL_TO_LEVEL = {
   1: 'A1',
@@ -151,13 +168,10 @@ const formatAnalysisText = (analysis: string | undefined): string => {
 };
 
 // Format as bullet points with proper type handling
-const formatArrayDisplay = (arr: string | string[] | undefined): string => {
+const formatArrayDisplay = (arr?: string | string[]): string => {
   if (!arr) return '';
-  
-  // If it's already a string, split it into an array
-  const items = Array.isArray(arr) ? arr : arr.split(',');
-  
-  return items.map(item => `• ${item.trim()}`).join('\n');
+  if (typeof arr === 'string') return arr;
+  return arr.join(', ');
 };
 
 // Move getRecommendations outside of generateRecommendations
@@ -188,22 +202,6 @@ function getRecommendations(userData: UserData | undefined): string[] {
 function generateRecommendations(userData: UserData | undefined): string[] {
   if (!userData) return [];
   return getRecommendations(userData);
-}
-
-interface AutoTableOptions {
-  startY: number;
-  head?: any[][];
-  body: any[][];
-  margin?: { left: number; right?: number };
-}
-
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: AutoTableOptions) => void;
-    lastAutoTable: {
-      finalY: number;
-    };
-  }
 }
 
 export default function ReportPage({ onNext, updateUserData }: ReportPageProps) {
@@ -839,9 +837,6 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
             }}
             disabled={isGeneratingPDF}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
             <span>{isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}</span>
           </button>
         </div>
