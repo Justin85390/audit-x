@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+// Use the correct Next.js route segment config type
+type RouteSegmentConfig = {
+  params: {
+    id: string;
+  };
+};
+
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteSegmentConfig  // Use the correct type here
 ) {
   try {
     const { id } = params;
