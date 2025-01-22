@@ -2,22 +2,33 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     
-    // Construct a prompt using all available data
+    // Construct a more detailed prompt
     const prompt = `
-      Based on the following English language assessment data, provide 4-5 specific recommendations:
+      Based on this comprehensive assessment data:
       
       Speaking: ${body.speakingData.cefrLevel} - ${body.speakingData.cefrDetails}
       Learner's Challenges: "${body.speakingData.difficulties_transcript}"
       
-      Listening: ${body.listeningData.cefrLevel} - ${body.listeningData.cefrDetails}
+      Listening: ${body.listeningData.cefrLevel}
       Score: ${body.listeningScore}%
       
-      Reading: ${body.readingData.cefrLevel} - ${body.readingData.cefrDetails}
+      Reading: ${body.readingData.cefrLevel}
       Score: ${body.readingScore}%
       
-      Writing: ${body.writingData.cefrLevel} - ${body.writingData.cefrDetails}
+      Writing: ${body.writingData.cefrLevel}
       
-      Format each recommendation as a bullet point focusing on specific actions the learner can take.
+      Learner Preferences:
+      - Time commitment: ${body.preferencesData.timeCommitment}
+      - Devices: ${body.preferencesData.devicePreferences.join(', ')}
+      - Content types: ${body.preferencesData.contentPreferences.join(', ')}
+      
+      Provide 5-6 specific, actionable recommendations that:
+      1. Address their identified challenges
+      2. Match their learning preferences
+      3. Target their current CEFR levels
+      4. Include specific activities and resources
+      
+      Format each recommendation as a bullet point.
     `;
 
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {

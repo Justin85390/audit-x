@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+// React import first
+import React, { useEffect, useState } from 'react';
 import ReportPage from '@/components/ReportPage';
 import { transformDatabaseData } from '@/app/utils/transformDatabaseData';
 import { supabase } from '@/app/lib/supabase';

@@ -16,7 +16,7 @@ import NeedsAnalysisPage from '@/components/NeedsAnalysisPage';
 import { UserData } from '@/types';
 
 export default function Home() {
-  const [currentPage, setCurrentPage] = useState('welcome');
+  const [currentPage, setCurrentPage] = useState<string>('welcome');
   const [userData, setUserData] = useState<UserData>({
     contactDetails: {
       name: '',
@@ -45,30 +45,21 @@ export default function Home() {
     writingScore: 0
   });
 
-  const nextPage = () => setCurrentPage((prev) => {
-    switch (prev) {
-      case 'welcome':
-        return 'contact';
-      case 'contact':
-        return 'learnerData';
-      case 'learnerData':
-        return 'needsAnalysis';
-      case 'needsAnalysis':
-        return 'speaking';
-      case 'speaking':
-        return 'opinion';
-      case 'opinion':
-        return 'listeningComprehension';
-      case 'listeningComprehension':
-        return 'readingComprehension';
-      case 'readingComprehension':
-        return 'writing';
-      case 'writing':
-        return 'report';
-      default:
-        return prev;
-    }
-  });
+  const pageOrder = {
+    'welcome': 'contact',
+    'contact': 'learnerData',
+    'learnerData': 'needsAnalysis',
+    'needsAnalysis': 'speaking',
+    'speaking': 'opinion',
+    'opinion': 'listeningComprehension',
+    'listeningComprehension': 'readingComprehension',
+    'readingComprehension': 'writing',
+    'writing': 'report'
+  };
+
+  const handleNext = () => {
+    setCurrentPage(pageOrder[currentPage]);
+  };
 
   const updateUserData = (key: string, data: any) => {
     console.log('Updating user data:', key, data);
@@ -88,39 +79,35 @@ export default function Home() {
     });
   };
 
-  const handleNext = () => {
-    console.log('Audit completed:', userData);
-  };
-
   const renderPage = () => {
     switch (currentPage) {
       case 'welcome':
-        return <WelcomePage onNext={nextPage} />;
+        return <WelcomePage onNext={handleNext} />;
       case 'contact':
-        return <ContactDetailsPage onNext={nextPage} updateUserData={updateUserData} />;
+        return <ContactDetailsPage onNext={handleNext} updateUserData={updateUserData} />;
       case 'learnerData':
         return <LearnerDataPage
-          onNext={nextPage}
+          onNext={handleNext}
           updateUserData={updateUserData}
         />;
       case 'needsAnalysis':
         return <NeedsAnalysisPage
-          onNext={nextPage}
+          onNext={handleNext}
           updateUserData={updateUserData}
         />;
       case 'speaking':
         return <SpeakingPage
-          onNext={nextPage}
+          onNext={handleNext}
           updateUserData={updateUserData}
         />;
       case 'writing':
-        return <WritingPage onNext={nextPage} updateUserData={updateUserData} />;
+        return <WritingPage onNext={handleNext} updateUserData={updateUserData} />;
       case 'opinion':
-        return <OpinionPage onNext={nextPage} updateUserData={updateUserData} />;
+        return <OpinionPage onNext={handleNext} updateUserData={updateUserData} />;
       case 'listeningComprehension':
-        return <ListeningComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
+        return <ListeningComprehensionPage onNext={handleNext} updateUserData={updateUserData} />;
       case 'readingComprehension':
-        return <ReadingComprehensionPage onNext={nextPage} updateUserData={updateUserData} />;
+        return <ReadingComprehensionPage onNext={handleNext} updateUserData={updateUserData} />;
       case 'report':
         return <ReportPage 
           onNext={handleNext}

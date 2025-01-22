@@ -27,9 +27,12 @@ export async function POST(req: Request) {
         }, {
           role: "user",
           content: `Please analyze this English speaking sample and provide:
-1. A clear opening sentence about the speaker's overall fluency and confidence
-2. A CEFR level assessment (A1-C2) with brief justification
-3. A detailed analysis of:
+
+Summary: Start with a clear opening sentence about the speaker's overall fluency and confidence.
+
+Then provide:
+1. CEFR level assessment (A1-C2) with brief justification
+2. Detailed analysis of:
    - Pronunciation and intonation
    - Fluency and pace
    - Vocabulary use and range

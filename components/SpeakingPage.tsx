@@ -48,6 +48,9 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [userTranscript, setUserTranscript] = useState<string>('');
+  const [transcript, setTranscript] = useState('');
+  const [editedTranscript, setEditedTranscript] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
 
   // Video URLs
   const videoUrls = {
@@ -163,6 +166,9 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
           // Get analysis
           await getAnalysis(transcriptionText);
 
+          setTranscript(transcriptionText);
+          setEditedTranscript(transcriptionText);
+
         } catch (error) {
           console.error('Transcription error:', error);
           setError('Failed to transcribe audio. Please try again.');
@@ -234,11 +240,25 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
     }
   };
 
+  // Handle edit button click
+  const handleEditClick = () => {
+    setEditedTranscript(transcript);
+    setIsEditing(true);
+  };
+
+  // Handle re-record
+  const handleReRecord = () => {
+    setTranscript('');
+    setEditedTranscript('');
+    setIsEditing(false);
+    setIsRecording(false);
+    mediaRecorderRef.current = null;
+    audioChunksRef.current = [];
+  };
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
-      {/* Single Combined Container */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
-        {/* Language Toggle */}
         <div className="flex justify-end mb-4 space-x-2">
           <button 
             onClick={() => onLanguageChange?.('en')}
@@ -268,7 +288,6 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
 
         <h1 className="text-4xl font-bold text-center mb-6">{languageContent[language].title}</h1>
         
-        {/* Video Section */}
         <div className="w-full flex flex-col items-center mb-8">
           <video
             ref={videoRef}
@@ -297,7 +316,6 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
             </button>
           )}
 
-          {/* Question and Recording Section - Moved from second container */}
           <div className="w-full max-w-2xl mx-auto">
             <h3 className="text-2xl font-semibold text-center mb-4 text-gray-800">
               {languageContent[language].question}
@@ -329,130 +347,57 @@ export default function SpeakingPage({ onNext, updateUserData, onLanguageChange 
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Recording History Container - Keep this separate */}
-      <div className={`w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 transition-opacity duration-500 ${transcriptHistory.length ? 'opacity-100' : 'opacity-0'}`}>
-        {/* Recording History */}
-        <div className="h-64 overflow-y-auto mb-6 bg-gray-50 rounded-lg p-4">
-          {transcriptHistory.map((item, index) => (
-            <div
-              key={index}
-              className="mb-4 text-gray-700"
-            >
-              <span className="font-semibold">
-                {language === 'en' ? 'Your Response' : 'Votre Réponse'}:
-              </span>
-              <div className="flex justify-between items-center group">
-                <span>{item.text}</span>
-                <div className="flex flex-col items-center ml-4">
-                  <span className="text-sm text-blue-500 mb-1">
-                    {language === 'en' ? 'Edit Transcript' : 'Modifier la transcription'}
-                  </span>
+        {transcript && !isRecording && (
+          <div className="mt-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium mb-2">Your Response:</h3>
+              {!isEditing ? (
+                <>
+                  <p className="text-gray-700">{transcript}</p>
                   <button
-                    onClick={() => {
-                      const updatedTranscripts = [...transcriptHistory];
-                      updatedTranscripts[index] = {
-                        ...updatedTranscripts[index],
-                        text: 'New edited text'
-                      };
-                      setTranscriptHistory(updatedTranscripts);
-                    }}
-                    className="text-blue-500 hover:text-blue-700 text-4xl opacity-75 group-hover:opacity-100 transition-opacity"
-                    title={language === 'en' ? 'Edit text' : 'Modifier le texte'}
+                    onClick={handleEditClick}
+                    className="text-blue-600 hover:text-blue-800 mt-2 flex items-center gap-2"
                   >
-                    ✎
+                    Edit text <span className="text-xl">✎</span>
                   </button>
-                </div>
-              </div>
+                </>
+              ) : (
+                <textarea
+                  value={editedTranscript}
+                  onChange={(e) => setEditedTranscript(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  rows={4}
+                />
+              )}
             </div>
-          ))}
-        </div>
 
-        {/* Buttons Container */}
-        <div className="flex flex-col items-center space-y-4">
-          {/* Recording and Save buttons row */}
-          <div className="flex justify-center space-x-4">
-            <button
-              onClick={stopRecording}
-              disabled={isLoading}
-              className={`
-                ${isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-500 hover:bg-blue-600'}
-                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-                text-white font-bold py-3 px-6 rounded-full transition-colors
-                flex items-center justify-center min-w-[200px]
-                mb-4
-              `}
-            >
-              {isLoading ? languageContent[language].processingMessage : 
-               isRecording ? languageContent[language].stopButton : 
-               languageContent[language].reRecordButton}
-            </button>
-
-            {transcriptHistory.length > 0 && (
+            <div className="flex justify-center space-x-4 mt-4">
               <button
-                onClick={handleSaveTranscripts}
-                disabled={isSaving}
-                className={`
-                  ${saveSuccess ? 'bg-green-500' : 'bg-yellow-500 hover:bg-yellow-600'}
-                  ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}
-                  text-white font-bold py-2 px-6 rounded-full transition-colors
-                  flex items-center justify-center
-                `}
+                onClick={handleReRecord}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
               >
-                {isSaving ? (
-                  language === 'en' ? 'Saving...' : 'Enregistrement...'
-                ) : saveSuccess ? (
-                  '✓'
-                ) : (
-                  language === 'en' ? 'Save Changes' : 'Enregistrer'
-                )}
+                <span>🎤</span>
+                Re-record your Answer
               </button>
-            )}
-          </div>
 
-          {/* Continue to Part 2 button in a separate row */}
-          <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={async () => {
-                try {
-                  const userEmail = localStorage.getItem('userEmail');
-                  if (!userEmail) throw new Error('No user email found');
-
-                  // Get the latest transcript
-                  const transcriptText = transcriptHistory
-                    .map(item => item.text)
-                    .join(' ');
-
-                  // Save to database
-                  const { error } = await supabase
-                    .from('users')
-                    .update({
-                      speaking_difficulties_transcript: transcriptText
-                    })
-                    .eq('email', userEmail);
-
-                  if (error) throw error;
-
-                  // Continue to next page
+              <button
+                onClick={async () => {
+                  if (isEditing) {
+                    setTranscript(editedTranscript);
+                  }
+                  await handleSaveTranscripts();
                   onNext();
-                } catch (error) {
-                  console.error('Error saving transcript:', error);
-                }
-              }}
-              className="px-8 py-3 rounded-full font-bold bg-green-500 hover:bg-green-600 text-white 
-                         shadow-lg hover:shadow-xl transition-all duration-200 
-                         flex items-center justify-center gap-2"
-            >
-              {languageContent[language].continueToPartTwo}
-              <span className="text-xl">→</span>
-            </button>
-            
-            <p className="text-sm text-gray-600 italic mt-2">
-              {languageContent[language].partTwoMessage}
-            </p>
+                }}
+                disabled={isRecording}
+                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-full flex items-center gap-2"
+              >
+                <span>→</span>
+                Save and Continue to Part 2
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

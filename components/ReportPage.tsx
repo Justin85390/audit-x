@@ -5,6 +5,8 @@ import { UserData } from '@/app/types';
 import { useLanguage } from '../app/contexts/LanguageContext';
 import { supabase } from '@/app/lib/supabase';
 import { transformDatabaseData } from '@/app/utils/transformDatabaseData';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';  // For better table formatting
 
 interface ReportPageProps {
   onNext: () => void;
@@ -125,6 +127,69 @@ const readingCefrDescriptions = {
   }
 };
 
+// Helper function to extract first sentence
+const extractFirstSentence = (analysis: string): string => {
+  // Skip any leading numbers or bullets
+  const cleanText = analysis.replace(/^[0-9]+\.\s*/, '');
+  
+  // Find the first sentence
+  const match = cleanText.match(/^[^.!?]+[.!?]/);
+  return match ? match[0] : cleanText;
+};
+
+// Add a helper function to format the analysis text
+const formatAnalysisText = (analysis: string | undefined): string => {
+  if (!analysis) return '';
+  
+  return analysis
+    // Add space before "Detailed Analysis"
+    .replace('Detailed Analysis:', '\n\nDetailed Analysis:')
+    // Make "Detailed Analysis:" bold
+    .replace('Detailed Analysis:', '<strong>Detailed Analysis:</strong>')
+    // Add line breaks before each bullet point
+    .replace(/- (Pronunciation|Fluency|Vocabulary|Grammar|Communication)/g, '\n- $1');
+};
+
+// Format as bullet points with proper type handling
+const formatArrayDisplay = (arr: string | string[] | undefined): string => {
+  if (!arr) return '';
+  
+  // If it's already a string, split it into an array
+  const items = Array.isArray(arr) ? arr : arr.split(',');
+  
+  return items.map(item => `• ${item.trim()}`).join('\n');
+};
+
+// Move getRecommendations outside of generateRecommendations
+function getRecommendations(userData: UserData | undefined): string[] {
+  if (!userData) return [];
+
+  const recommendations = [
+    // Listening & Reading (existing)
+    readingCefrDescriptions[getCefrLevel(userData?.readingData?.score || 0)].recommendations,
+    listeningCefrDescriptions[getCefrLevel(userData?.listeningData?.score || 0)].recommendations,
+    
+    // Add Writing & Speaking based on CEFR levels
+    `Practice ${userData?.writingData?.cefrLevel} level writing tasks: emails, reports, and essays`,
+    `Focus on ${userData?.speakingData?.cefrLevel} level speaking activities: presentations and discussions`,
+  ];
+
+  // Add needs analysis if it exists and is an array
+  if (userData.preferencesData?.needsAnalysis) {
+    if (Array.isArray(userData.preferencesData.needsAnalysis)) {
+      recommendations.push(...userData.preferencesData.needsAnalysis);
+    }
+  }
+
+  return recommendations.filter(Boolean); // Remove any undefined/null values
+}
+
+// Then in generateRecommendations function
+function generateRecommendations(userData: UserData | undefined): string[] {
+  if (!userData) return [];
+  return getRecommendations(userData);
+}
+
 export default function ReportPage({ onNext, updateUserData }: ReportPageProps) {
   const { language } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -207,39 +272,176 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
     return 'A1';
   }
 
-  function generateRecommendations(userData: UserData | undefined): string[] {
-    if (!userData) return [];
+  const handleDownloadPDF = async () => {
+    const doc = new jsPDF();
+    
+    // Add page border to first page
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(10, 10, 190, 277); // Margins: left, top, width, height
+    
+    // Make logo more square and smaller
+    doc.addImage('/Linguaphone-logo.png', 'PNG', 15, 15, 25, 15);  // Reduced width to 25, height to 15
+    
+    // Center the title
+    doc.setFontSize(20);
+    const titleText = 'Linguaphone Language Audit Report';
+    const titleWidth = doc.getStringUnitWidth(titleText) * doc.getFontSize() / doc.internal.scaleFactor;
+    const titleX = (doc.internal.pageSize.width - titleWidth) / 2;
+    doc.text(titleText, titleX, 30);
+    
+    // Add user info
+    doc.setFontSize(12);
+    doc.text(`Name: ${userData?.contactDetails?.name}`, 15, 50);
+    doc.text(`Email: ${userData?.contactDetails?.email}`, 15, 60);
+    doc.text(`Assessment Date: ${new Date().toLocaleDateString()}`, 15, 70);
 
-    const recommendations: string[] = [];
+    // Make Overall CEFR Level more prominent
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');  // Specify font family
+    doc.text('Overall CEFR Level:', 15, 90);
+    doc.setFont('helvetica', 'normal'); // Reset to normal
+    doc.text(calculateOverallCEFR(userData), 100, 90);
 
-    // Add recommendations based on CEFR levels and scores
+    // Add Speaking Assessment
+    doc.setFontSize(16);
+    doc.text('Speaking Assessment', 15, 110);
+    
+    doc.setFontSize(12);
+    doc.text(`CEFR Level: ${userData?.speakingData?.cefrLevel}`, 15, 125);
+
+    // Add technical scores in a table first
+    (doc as any).autoTable({
+      startY: 135,
+      head: [['Skill', 'Score']],
+      body: [
+        ['Pronunciation', userData?.speakingData?.speechace_analysis?.pronunciation],
+        ['Fluency', userData?.speakingData?.speechace_analysis?.fluency],
+        ['Vocabulary', userData?.speakingData?.speechace_analysis?.vocabulary],
+        ['Grammar', userData?.speakingData?.speechace_analysis?.grammar]
+      ],
+      margin: { left: 15 }
+    });
+
+    // Then add speaking analysis
+    (doc as any).autoTable({
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [['Speaking Analysis']],
+      body: [[
+        userData?.speakingData?.openai_analysis || 'No analysis available'
+      ]],
+      margin: { left: 15 }
+    });
+
+    // Force Listening Assessment to start on page 2
+    doc.addPage();
+    doc.rect(10, 10, 190, 277); // Add border to new page
+
+    // Add Listening Assessment at top of page 2
+    doc.setFontSize(16);
+    doc.text('Listening Assessment', 15, 30);
+    
+    doc.setFontSize(12);
     const listeningLevel = getCefrLevel(userData?.listeningData?.score || 0);
+    doc.text(`CEFR Level: ${listeningLevel}`, 15, 45);
+    doc.text(`Score: ${userData?.listeningData?.score}%`, 15, 55);
+
+    // Add listening description in a table
+    (doc as any).autoTable({
+      startY: 65,
+      head: [['Description', 'Examples', 'Recommendations']],
+      body: [[
+        listeningCefrDescriptions[listeningLevel].description,
+        listeningCefrDescriptions[listeningLevel].examples,
+        listeningCefrDescriptions[listeningLevel].recommendations
+      ]],
+      margin: { left: 15 }
+    });
+
+    // Get the final Y position after the listening table
+    const listeningFinalY = (doc as any).lastAutoTable.finalY || 85;
+
+    // Add Reading Assessment
+    doc.setFontSize(16);
+    doc.text('Reading Assessment', 15, listeningFinalY + 20);
+
+    doc.setFontSize(12);
     const readingLevel = getCefrLevel(userData?.readingData?.score || 0);
-    const speakingLevel = userData?.speakingData?.cefrLevel;
-    const writingLevel = userData?.writingData?.cefrLevel;
+    doc.text(`CEFR Level: ${readingLevel}`, 15, listeningFinalY + 35);
+    doc.text(`Score: ${userData?.readingData?.score}%`, 15, listeningFinalY + 45);
 
-    // Add skill-specific recommendations
-    if (listeningLevel) {
-      recommendations.push(listeningCefrDescriptions[listeningLevel].recommendations);
+    // Add reading description in a table
+    (doc as any).autoTable({
+      startY: listeningFinalY + 55,
+      head: [['Description', 'Examples', 'Recommendations']],
+      body: [[
+        readingCefrDescriptions[readingLevel].description,
+        readingCefrDescriptions[readingLevel].examples,
+        readingCefrDescriptions[readingLevel].recommendations
+      ]],
+      margin: { left: 15 }
+    });
+
+    // Get the final Y position after the reading table
+    let readingFinalY = (doc as any).lastAutoTable.finalY || 105;
+
+    // Check if we need a new page
+    if (readingFinalY > 650) {
+      doc.addPage();
+      doc.rect(10, 10, 190, 277); // Add border to new page
+      readingFinalY = 20;
     }
 
-    if (readingLevel) {
-      recommendations.push(readingCefrDescriptions[readingLevel].recommendations);
+    // Add Writing Assessment
+    doc.setFontSize(16);
+    doc.text('Writing Assessment', 15, readingFinalY + 20);
+
+    doc.setFontSize(12);
+    doc.text(`CEFR Level: ${userData?.writingData?.cefrLevel}`, 15, readingFinalY + 35);
+    
+    // Add writing analysis in a table
+    (doc as any).autoTable({
+      startY: readingFinalY + 45,
+      head: [['Analysis']],
+      body: [[
+        userData?.writingData?.analysis || 'No analysis available'
+      ]],
+      margin: { left: 15 }
+    });
+
+    // Remove the forced page break for Recommendations and let Writing Assessment flow naturally
+    let writingFinalY = (doc as any).lastAutoTable.finalY || 155;
+
+    // If we're on page 2 and near the bottom, let it flow to page 3
+    if (writingFinalY > 650) {
+      doc.addPage();
+      doc.rect(10, 10, 190, 277); // Add border to page 3
+      writingFinalY = 20;
     }
 
-    // Add speaking recommendations based on SpeechAce scores
-    const speechScores = userData?.speakingData?.speechace_analysis;
-    if (speechScores) {
-      if (Number(speechScores.pronunciation) < 90) {
-        recommendations.push('Practice pronunciation with focused exercises and speech recognition tools');
-      }
-      if (Number(speechScores.fluency) < 90) {
-        recommendations.push('Improve fluency through regular conversation practice and speaking exercises');
-      }
-    }
+    // Add Recommendations after Writing Assessment
+    doc.setFontSize(16);
+    doc.text('Recommendations', 15, writingFinalY + 20);
 
-    return recommendations;
-  }
+    // Add recommendations in a table
+    (doc as any).autoTable({
+      startY: writingFinalY + 30,
+      head: [['Recommendations']],
+      body: generateRecommendations(userData).map(rec => [rec]),
+      margin: { left: 15, right: 15 }
+    });
+
+    // Instead, add this simpler approach
+    doc.setPage(3);  // Switch to page 3 (will only work if page 3 exists)
+    doc.rect(10, 10, 190, 277); // Add border to page 3
+
+    // Format the filename with user's name
+    const userName = userData?.contactDetails?.name || 'User';
+    const fileName = `${userName} Language Audit Report.pdf`;
+
+    // Save with custom filename
+    doc.save(fileName);
+  };
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
@@ -298,9 +500,11 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">CEFR Level: {userData?.speakingData?.cefrLevel}</h3>
-              <p className="text-gray-700">
-                {userData?.speakingData?.openai_analysis?.split('.')[0]}.
-              </p>
+              <div className="text-gray-700">
+                {userData?.speakingData?.openai_analysis && 
+                  extractFirstSentence(userData.speakingData.openai_analysis)
+                }
+              </div>
               <button
                 onClick={() => setSpeakingExpanded(!speakingExpanded)}
                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center"
@@ -315,7 +519,11 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
                 <div className="space-y-4">
                   <div>
                     <h5 className="font-medium text-gray-700">General Analysis</h5>
-                    <p className="text-gray-600">{userData?.speakingData?.openai_analysis}</p>
+                    <p className="text-gray-600 whitespace-pre-line" 
+                       dangerouslySetInnerHTML={{ 
+                         __html: formatAnalysisText(userData?.speakingData?.openai_analysis) 
+                       }} 
+                    />
                   </div>
                   <div>
                     <h5 className="font-medium text-gray-700">Technical Scores</h5>
@@ -426,15 +634,17 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
           </div>
         </div>
 
-        {/* Section 4: Writing Assessment */}
+        {/* Section: Writing Assessment */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Writing Assessment</h2>
           <div className="space-y-4">
             <div className="bg-blue-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">CEFR Level: {userData?.writingData?.cefrLevel}</h3>
-              <p className="text-gray-700">
-                {userData?.writingData?.analysis?.split('.')[0]}.
-              </p>
+              <div className="text-gray-700">
+                {userData?.writingData?.analysis && 
+                  extractFirstSentence(userData.writingData.analysis)
+                }
+              </div>
               <button
                 onClick={() => setWritingExpanded(!writingExpanded)}
                 className="mt-2 text-blue-600 hover:text-blue-800 text-sm flex items-center"
@@ -444,16 +654,16 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
             </div>
 
             {writingExpanded && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 transition-all duration-200">
                 <h4 className="font-medium text-gray-700 mb-3">Assessment Details</h4>
                 <div className="space-y-4">
                   <div>
-                    <h5 className="font-medium text-gray-700">Email Submission</h5>
-                    <p className="text-gray-600 ml-4">{userData?.writingData?.submission}</p>
-                  </div>
-                  <div>
-                    <h5 className="font-medium text-gray-700">Analysis</h5>
-                    <p className="text-gray-600 ml-4">{userData?.writingData?.analysis}</p>
+                    <h5 className="font-medium text-gray-700">General Analysis</h5>
+                    <p className="text-gray-600 whitespace-pre-line" 
+                      dangerouslySetInnerHTML={{ 
+                        __html: formatAnalysisText(userData?.writingData?.analysis) 
+                      }} 
+                    />
                   </div>
                 </div>
               </div>
@@ -557,7 +767,9 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
 
             <div className="bg-amber-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2">Needs Analysis Summary</h3>
-              <p className="text-gray-700">{userData?.preferencesData?.needsAnalysis}</p>
+              <p className="text-gray-700">
+                {formatArrayDisplay(userData?.preferencesData?.needsAnalysis)}
+              </p>
             </div>
           </div>
         </div>
@@ -592,23 +804,12 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
         <div className="flex justify-center space-x-4 mt-6 mb-8">
           <button
             className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center space-x-2"
-            onClick={() => console.log('Download PDF clicked')}
+            onClick={handleDownloadPDF}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
             <span>Download PDF</span>
-          </button>
-          
-          <button
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center space-x-2"
-            onClick={() => console.log('Email Report clicked')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-            </svg>
-            <span>Email Report</span>
           </button>
         </div>
       </div>

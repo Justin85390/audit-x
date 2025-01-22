@@ -26,9 +26,12 @@ export async function POST(req: Request) {
         }, {
           role: "user",
           content: `Please analyze this English writing sample and provide:
-1. A clear opening sentence summarizing the overall writing quality
-2. A CEFR level assessment (A1-C2) with brief justification
-3. A detailed analysis of:
+
+Summary: Start with a clear opening sentence summarizing the overall writing quality.
+
+Then provide:
+1. CEFR level assessment (A1-C2) with brief justification
+2. Detailed analysis of:
    - Grammar and structure
    - Vocabulary range and accuracy
    - Text organization and coherence
