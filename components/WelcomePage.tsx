@@ -40,11 +40,11 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
   const [isThinking, setIsThinking] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Video URLs
-  const videoUrls = {
+  // Move videoUrls outside component or use useMemo
+  const videoUrls = React.useMemo(() => ({
     en: "https://justindonlon.com/wp-content/uploads/2025/01/Welcome-Page2.mp4",
     fr: "https://justindonlon.com/wp-content/uploads/2025/01/FR-Welcome-Page2.mp4"
-  };
+  }), []); // Empty dependency array since URLs are static
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
@@ -212,7 +212,7 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
       videoRef.current.muted = false;
       videoRef.current.play()
         .catch(e => {
-          console.log('Video play failed:', e);
+          console.error('Video autoplay failed:', e);
           setAutoplayFailed(true);
         });
     }
@@ -233,6 +233,16 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
       console.log('Video source changed to:', videoUrls[language]);
     }
   }, [language]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play()
+        .catch(e => {
+          console.error('Video autoplay failed:', e);
+          setAutoplayFailed(true);
+        });
+    }
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col items-center">

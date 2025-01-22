@@ -3,10 +3,10 @@ import { supabase } from '../../../../lib/supabase'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const { error } = await supabase
       .from('users')
       .delete()
@@ -14,8 +14,9 @@ export async function DELETE(
 
     if (error) throw error
 
-    return NextResponse.json({ message: 'User deleted' })
+    return NextResponse.json({ message: 'User deleted successfully' })
   } catch (error: any) {
+    console.error('Delete user error:', error);
     return NextResponse.json(
       { error: 'Failed to delete user' },
       { status: 500 }
