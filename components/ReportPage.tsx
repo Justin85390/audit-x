@@ -5,7 +5,7 @@ import { UserData } from '@/app/types';
 import { useLanguage } from '../app/contexts/LanguageContext';
 import { supabase } from '@/app/lib/supabase';
 import { transformDatabaseData } from '@/app/utils/transformDatabaseData';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';  // For better table formatting
 
 interface ReportPageProps {
@@ -190,6 +190,22 @@ function generateRecommendations(userData: UserData | undefined): string[] {
   return getRecommendations(userData);
 }
 
+interface AutoTableOptions {
+  startY: number;
+  head?: any[][];
+  body: any[][];
+  margin?: { left: number; right?: number };
+}
+
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: AutoTableOptions) => void;
+    lastAutoTable: {
+      finalY: number;
+    };
+  }
+}
+
 export default function ReportPage({ onNext, updateUserData }: ReportPageProps) {
   const { language } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -272,175 +288,183 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
     return 'A1';
   }
 
+  // Add loading state
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  // Update the handleDownloadPDF function for better type safety
   const handleDownloadPDF = async () => {
     const doc = new jsPDF();
     
-    // Add page border to first page
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
-    doc.rect(10, 10, 190, 277); // Margins: left, top, width, height
-    
-    // Make logo more square and smaller
-    doc.addImage('/Linguaphone-logo.png', 'PNG', 15, 15, 25, 15);  // Reduced width to 25, height to 15
-    
-    // Center the title
-    doc.setFontSize(20);
-    const titleText = 'Linguaphone Language Audit Report';
-    const titleWidth = doc.getStringUnitWidth(titleText) * doc.getFontSize() / doc.internal.scaleFactor;
-    const titleX = (doc.internal.pageSize.width - titleWidth) / 2;
-    doc.text(titleText, titleX, 30);
-    
-    // Add user info
-    doc.setFontSize(12);
-    doc.text(`Name: ${userData?.contactDetails?.name}`, 15, 50);
-    doc.text(`Email: ${userData?.contactDetails?.email}`, 15, 60);
-    doc.text(`Assessment Date: ${new Date().toLocaleDateString()}`, 15, 70);
+    try {
+      // Add page border
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.rect(10, 10, 190, 277);
+      
+      // Make logo more square and smaller
+      doc.addImage('/Linguaphone-logo.png', 'PNG', 15, 15, 25, 15);  // Reduced width to 25, height to 15
+      
+      // Center the title
+      doc.setFontSize(20);
+      const titleText = 'Linguaphone Language Audit Report';
+      const titleWidth = doc.getStringUnitWidth(titleText) * doc.getFontSize() / doc.internal.scaleFactor;
+      const titleX = (doc.internal.pageSize.width - titleWidth) / 2;
+      doc.text(titleText, titleX, 30);
+      
+      // Add user info
+      doc.setFontSize(12);
+      doc.text(`Name: ${userData?.contactDetails?.name}`, 15, 50);
+      doc.text(`Email: ${userData?.contactDetails?.email}`, 15, 60);
+      doc.text(`Assessment Date: ${new Date().toLocaleDateString()}`, 15, 70);
 
-    // Make Overall CEFR Level more prominent
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');  // Specify font family
-    doc.text('Overall CEFR Level:', 15, 90);
-    doc.setFont('helvetica', 'normal'); // Reset to normal
-    doc.text(calculateOverallCEFR(userData), 100, 90);
+      // Make Overall CEFR Level more prominent
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');  // Specify font family
+      doc.text('Overall CEFR Level:', 15, 90);
+      doc.setFont('helvetica', 'normal'); // Reset to normal
+      doc.text(calculateOverallCEFR(userData), 100, 90);
 
-    // Add Speaking Assessment
-    doc.setFontSize(16);
-    doc.text('Speaking Assessment', 15, 110);
-    
-    doc.setFontSize(12);
-    doc.text(`CEFR Level: ${userData?.speakingData?.cefrLevel}`, 15, 125);
+      // Add Speaking Assessment
+      doc.setFontSize(16);
+      doc.text('Speaking Assessment', 15, 110);
+      
+      doc.setFontSize(12);
+      doc.text(`CEFR Level: ${userData?.speakingData?.cefrLevel}`, 15, 125);
 
-    // Add technical scores in a table first
-    (doc as any).autoTable({
-      startY: 135,
-      head: [['Skill', 'Score']],
-      body: [
-        ['Pronunciation', userData?.speakingData?.speechace_analysis?.pronunciation],
-        ['Fluency', userData?.speakingData?.speechace_analysis?.fluency],
-        ['Vocabulary', userData?.speakingData?.speechace_analysis?.vocabulary],
-        ['Grammar', userData?.speakingData?.speechace_analysis?.grammar]
-      ],
-      margin: { left: 15 }
-    });
+      // Add technical scores in a table first
+      (doc as any).autoTable({
+        startY: 135,
+        head: [['Skill', 'Score']],
+        body: [
+          ['Pronunciation', userData?.speakingData?.speechace_analysis?.pronunciation],
+          ['Fluency', userData?.speakingData?.speechace_analysis?.fluency],
+          ['Vocabulary', userData?.speakingData?.speechace_analysis?.vocabulary],
+          ['Grammar', userData?.speakingData?.speechace_analysis?.grammar]
+        ],
+        margin: { left: 15 }
+      });
 
-    // Then add speaking analysis
-    (doc as any).autoTable({
-      startY: (doc as any).lastAutoTable.finalY + 10,
-      head: [['Speaking Analysis']],
-      body: [[
-        userData?.speakingData?.openai_analysis || 'No analysis available'
-      ]],
-      margin: { left: 15 }
-    });
+      // Then add speaking analysis
+      (doc as any).autoTable({
+        startY: (doc as any).lastAutoTable.finalY + 10,
+        head: [['Speaking Analysis']],
+        body: [[
+          userData?.speakingData?.openai_analysis || 'No analysis available'
+        ]],
+        margin: { left: 15 }
+      });
 
-    // Force Listening Assessment to start on page 2
-    doc.addPage();
-    doc.rect(10, 10, 190, 277); // Add border to new page
-
-    // Add Listening Assessment at top of page 2
-    doc.setFontSize(16);
-    doc.text('Listening Assessment', 15, 30);
-    
-    doc.setFontSize(12);
-    const listeningLevel = getCefrLevel(userData?.listeningData?.score || 0);
-    doc.text(`CEFR Level: ${listeningLevel}`, 15, 45);
-    doc.text(`Score: ${userData?.listeningData?.score}%`, 15, 55);
-
-    // Add listening description in a table
-    (doc as any).autoTable({
-      startY: 65,
-      head: [['Description', 'Examples', 'Recommendations']],
-      body: [[
-        listeningCefrDescriptions[listeningLevel].description,
-        listeningCefrDescriptions[listeningLevel].examples,
-        listeningCefrDescriptions[listeningLevel].recommendations
-      ]],
-      margin: { left: 15 }
-    });
-
-    // Get the final Y position after the listening table
-    const listeningFinalY = (doc as any).lastAutoTable.finalY || 85;
-
-    // Add Reading Assessment
-    doc.setFontSize(16);
-    doc.text('Reading Assessment', 15, listeningFinalY + 20);
-
-    doc.setFontSize(12);
-    const readingLevel = getCefrLevel(userData?.readingData?.score || 0);
-    doc.text(`CEFR Level: ${readingLevel}`, 15, listeningFinalY + 35);
-    doc.text(`Score: ${userData?.readingData?.score}%`, 15, listeningFinalY + 45);
-
-    // Add reading description in a table
-    (doc as any).autoTable({
-      startY: listeningFinalY + 55,
-      head: [['Description', 'Examples', 'Recommendations']],
-      body: [[
-        readingCefrDescriptions[readingLevel].description,
-        readingCefrDescriptions[readingLevel].examples,
-        readingCefrDescriptions[readingLevel].recommendations
-      ]],
-      margin: { left: 15 }
-    });
-
-    // Get the final Y position after the reading table
-    let readingFinalY = (doc as any).lastAutoTable.finalY || 105;
-
-    // Check if we need a new page
-    if (readingFinalY > 650) {
+      // Force Listening Assessment to start on page 2
       doc.addPage();
       doc.rect(10, 10, 190, 277); // Add border to new page
-      readingFinalY = 20;
-    }
 
-    // Add Writing Assessment
-    doc.setFontSize(16);
-    doc.text('Writing Assessment', 15, readingFinalY + 20);
+      // Add Listening Assessment at top of page 2
+      doc.setFontSize(16);
+      doc.text('Listening Assessment', 15, 30);
+      
+      doc.setFontSize(12);
+      const listeningLevel = getCefrLevel(userData?.listeningData?.score || 0);
+      doc.text(`CEFR Level: ${listeningLevel}`, 15, 45);
+      doc.text(`Score: ${userData?.listeningData?.score}%`, 15, 55);
 
-    doc.setFontSize(12);
-    doc.text(`CEFR Level: ${userData?.writingData?.cefrLevel}`, 15, readingFinalY + 35);
-    
-    // Add writing analysis in a table
-    (doc as any).autoTable({
-      startY: readingFinalY + 45,
-      head: [['Analysis']],
-      body: [[
-        userData?.writingData?.analysis || 'No analysis available'
-      ]],
-      margin: { left: 15 }
-    });
+      // Add listening description in a table
+      (doc as any).autoTable({
+        startY: 65,
+        head: [['Description', 'Examples', 'Recommendations']],
+        body: [[
+          listeningCefrDescriptions[listeningLevel].description,
+          listeningCefrDescriptions[listeningLevel].examples,
+          listeningCefrDescriptions[listeningLevel].recommendations
+        ]],
+        margin: { left: 15 }
+      });
 
-    // Remove the forced page break for Recommendations and let Writing Assessment flow naturally
-    let writingFinalY = (doc as any).lastAutoTable.finalY || 155;
+      // Get the final Y position after the listening table
+      const listeningFinalY = (doc as any).lastAutoTable.finalY || 85;
 
-    // If we're on page 2 and near the bottom, let it flow to page 3
-    if (writingFinalY > 650) {
-      doc.addPage();
+      // Add Reading Assessment
+      doc.setFontSize(16);
+      doc.text('Reading Assessment', 15, listeningFinalY + 20);
+
+      doc.setFontSize(12);
+      const readingLevel = getCefrLevel(userData?.readingData?.score || 0);
+      doc.text(`CEFR Level: ${readingLevel}`, 15, listeningFinalY + 35);
+      doc.text(`Score: ${userData?.readingData?.score}%`, 15, listeningFinalY + 45);
+
+      // Add reading description in a table
+      (doc as any).autoTable({
+        startY: listeningFinalY + 55,
+        head: [['Description', 'Examples', 'Recommendations']],
+        body: [[
+          readingCefrDescriptions[readingLevel].description,
+          readingCefrDescriptions[readingLevel].examples,
+          readingCefrDescriptions[readingLevel].recommendations
+        ]],
+        margin: { left: 15 }
+      });
+
+      // Get the final Y position after the reading table
+      let readingFinalY = (doc as any).lastAutoTable.finalY || 105;
+
+      // Check if we need a new page
+      if (readingFinalY > 650) {
+        doc.addPage();
+        doc.rect(10, 10, 190, 277); // Add border to new page
+        readingFinalY = 20;
+      }
+
+      // Add Writing Assessment
+      doc.setFontSize(16);
+      doc.text('Writing Assessment', 15, readingFinalY + 20);
+
+      doc.setFontSize(12);
+      doc.text(`CEFR Level: ${userData?.writingData?.cefrLevel}`, 15, readingFinalY + 35);
+      
+      // Add writing analysis in a table
+      (doc as any).autoTable({
+        startY: readingFinalY + 45,
+        head: [['Analysis']],
+        body: [[
+          userData?.writingData?.analysis || 'No analysis available'
+        ]],
+        margin: { left: 15 }
+      });
+
+      // Remove the forced page break for Recommendations and let Writing Assessment flow naturally
+      let writingFinalY = (doc as any).lastAutoTable.finalY || 155;
+
+      // If we're on page 2 and near the bottom, let it flow to page 3
+      if (writingFinalY > 650) {
+        doc.addPage();
+        doc.rect(10, 10, 190, 277); // Add border to page 3
+        writingFinalY = 20;
+      }
+
+      // Add Recommendations after Writing Assessment
+      doc.setFontSize(16);
+      doc.text('Recommendations', 15, writingFinalY + 20);
+
+      // Add recommendations in a table
+      (doc as any).autoTable({
+        startY: writingFinalY + 30,
+        head: [['Recommendations']],
+        body: generateRecommendations(userData).map(rec => [rec]),
+        margin: { left: 15, right: 15 }
+      });
+
+      // Instead, add this simpler approach
+      doc.setPage(3);  // Switch to page 3 (will only work if page 3 exists)
       doc.rect(10, 10, 190, 277); // Add border to page 3
-      writingFinalY = 20;
+
+      // Format filename safely
+      const userName = userData?.contactDetails?.name?.replace(/[^a-z0-9]/gi, '_') || 'User';
+      const fileName = `${userName}_Language_Audit_Report.pdf`;
+      
+      doc.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // Add error handling UI if needed
     }
-
-    // Add Recommendations after Writing Assessment
-    doc.setFontSize(16);
-    doc.text('Recommendations', 15, writingFinalY + 20);
-
-    // Add recommendations in a table
-    (doc as any).autoTable({
-      startY: writingFinalY + 30,
-      head: [['Recommendations']],
-      body: generateRecommendations(userData).map(rec => [rec]),
-      margin: { left: 15, right: 15 }
-    });
-
-    // Instead, add this simpler approach
-    doc.setPage(3);  // Switch to page 3 (will only work if page 3 exists)
-    doc.rect(10, 10, 190, 277); // Add border to page 3
-
-    // Format the filename with user's name
-    const userName = userData?.contactDetails?.name || 'User';
-    const fileName = `${userName} Language Audit Report.pdf`;
-
-    // Save with custom filename
-    doc.save(fileName);
   };
 
   return (
@@ -803,13 +827,22 @@ export default function ReportPage({ onNext, updateUserData }: ReportPageProps) 
         {/* Action Buttons */}
         <div className="flex justify-center space-x-4 mt-6 mb-8">
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg flex items-center space-x-2"
-            onClick={handleDownloadPDF}
+            className={`bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 
+                        rounded-lg flex items-center space-x-2 ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={async () => {
+              setIsGeneratingPDF(true);
+              try {
+                await handleDownloadPDF();
+              } finally {
+                setIsGeneratingPDF(false);
+              }
+            }}
+            disabled={isGeneratingPDF}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
             </svg>
-            <span>Download PDF</span>
+            <span>{isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}</span>
           </button>
         </div>
       </div>
