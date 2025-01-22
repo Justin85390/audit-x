@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// Use the correct Next.js route segment config type
-type RouteSegmentConfig = {
-  params: {
-    id: string;
-  };
-};
-
+// Next.js route handlers use this exact type signature
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteSegmentConfig  // Use the correct type here
+  context: {
+    params: {
+      id: string;
+    };
+  }
 ) {
   try {
-    const { id } = params;
+    const { id } = context.params;
     const { error } = await supabase
       .from('users')
       .delete()
