@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
-// Use Next.js's exact type structure
-type Context = {
-  params: {
-    id: string;
-  };
-};
-
 export async function DELETE(
-  request: NextRequest,
-  context: Context
+  _req: NextRequest,
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     const { error } = await supabase
       .from('users')
       .delete()
