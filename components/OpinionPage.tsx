@@ -42,13 +42,13 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
 
   // Video URLs
   const videoUrls = {
-    en: "https://justindonlon.com/wp-content/uploads/2025/01/OpinionPage2.mp4"
+    en: "https://justindonlon.com/wp-content/uploads/2025/01/OpinionPage3.mp4"
   };
 
   const languageContent: Record<Language, LanguageContent> = {
     en: {
       title: "Your Opinion",
-      question: "Do you prefer working at home or at the office?",
+      question: "In your opinion, what are the advantages and disadvantages of working from home?",
       recordButton: "Start Recording (45s)",
       stopButton: "Stop Recording",
       processingMessage: "Processing audio...",
@@ -59,7 +59,7 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
     },
     fr: {
       title: "Votre Opinion",
-      question: "Que pensez-vous de l'apprentissage de l'anglais en ligne par rapport à une salle de classe?",
+      question: "À mon avis, voici les avantages et les inconvénients du télétravail?",
       recordButton: "Commencer l'Enregistrement (45s)",
       stopButton: "Arrêter l'Enregistrement",
       processingMessage: "Traitement audio...",
@@ -384,11 +384,11 @@ export default function OpinionPage({ onNext, updateUserData, onLanguageChange }
                   Merci pour vos réponses à la partie 1 et bienvenue à la partie 2 de l'audit. 
                   La première partie évalue vos compétences en matière d'expression orale en anglais. 
                   Votre tâche consiste à parler pendant 45 secondes. La question est la suivante : 
-                  Préférez-vous travailler à la maison ou au bureau ? Essayez de donner deux exemples 
-                  pour étayer votre opinion. Prenez le temps de réfléchir et, lorsque vous êtes prêt, 
-                  commencez votre enregistrement. Pendant que vous parlez, utilisez le schéma sur l'écran 
-                  pour vous aider à structurer vos pensées. Une bonne façon de commencer est de dire 
-                  "A mon avis..." .
+                  À mon avis, voici les avantages et les inconvénients du télétravail ?
+                  Essayez de donner deux exemples pour étayer votre opinion. Prenez le temps de réfléchir et, 
+                  lorsque vous êtes prêt, commencez votre enregistrement. Pendant que vous parlez, utilisez 
+                  le schéma sur l'écran pour vous aider à structurer vos pensées. Une bonne façon de 
+                  commencer est de dire "A mon avis..." .
                 </p>
               </div>
             )}

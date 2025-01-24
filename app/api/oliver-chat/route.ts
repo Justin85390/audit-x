@@ -61,7 +61,9 @@ ${OLIVER_WEBAPP}`;
     });
 
     if (!ttsResponse.ok) {
-      throw new Error(`TTS API error: ${ttsResponse.status}`);
+      const errorData = await ttsResponse.json();
+      console.error('TTS API error details:', errorData);
+      throw new Error(`TTS API error: ${ttsResponse.status} - ${JSON.stringify(errorData)}`);
     }
 
     const audioBuffer = await ttsResponse.arrayBuffer();

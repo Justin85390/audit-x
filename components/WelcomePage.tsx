@@ -63,7 +63,7 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
       journey: "Votre parcours commence par quelques questions. Appuyez sur \"Prêt\" pour commencer.",
       playButton: "Lire la Vidéo",
       readyButton: "Prêt",
-      askOliver: "Demander à Oliver",
+      askOliver: "Ask Oliver",
       typingPlaceholder: "Tapez votre question pour Oliver...",
       processingMessage: "Traitement en cours...",
       defaultGreeting: "Bonjour! Je suis Oliver, votre assistant d'audit linguistique. Comment puis-je vous aider?",
@@ -108,31 +108,37 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.onstop = async () => {
         try {
+          setIsLoading(true);
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          
           const formData = new FormData();
           formData.append('file', audioBlob, 'recording.webm');
 
-          setIsLoading(true);
-          const response = await fetch('/api/transcribe', {
+          // Change back to original endpoint
+          const transcribeResponse = await fetch('/api/transcribe', {
             method: 'POST',
             body: formData
           });
 
-          if (!response.ok) throw new Error('Transcription failed');
+          if (!transcribeResponse.ok) {
+            throw new Error(`Transcription failed: ${transcribeResponse.status}`);
+          }
+
+          const transcribeData = await transcribeResponse.json();
           
-          const data = await response.json();
-          setUserTranscript(data.transcription);
-          
-          // Use oliver-chat instead of chat to get voice response
-          setIsThinking(true);
+          // Then get Oliver's response
           const chatResponse = await fetch('/api/oliver-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: data.transcription })
+            body: JSON.stringify({ text: transcribeData.transcription })
           });
 
-          if (!chatResponse.ok) throw new Error('Chat response failed');
-          
+          if (!chatResponse.ok) {
+            const errorData = await chatResponse.json();
+            console.error('Chat API error details:', errorData);
+            throw new Error(`Chat API error: ${chatResponse.status} - ${JSON.stringify(errorData)}`);
+          }
+
           const chatData = await chatResponse.json();
           setOliverResponse(chatData.response);
 
@@ -146,10 +152,10 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
           
         } catch (error) {
           console.error('Processing error:', error);
-          setError('Failed to process audio. Please try again.');
+          setError(error.message);
         } finally {
           setIsLoading(false);
-          setIsThinking(false);
+          audioChunksRef.current = [];
         }
       };
 
@@ -242,13 +248,14 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
           setAutoplayFailed(true);
         });
     }
-  }, []);
+  }, []); // Empty dependency array is fine since we only want this on mount
 
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col items-center">
       {/* Video Section */}
       <div className="w-full max-w-3xl bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="flex justify-between items-center mb-4">
+        {/* Logo and Language Section */}
+        <div className="flex justify-between items-start mb-4">
           {/* Logo */}
           <Image
             src={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/Linguaphone-logo-80-60.png`}
@@ -258,32 +265,40 @@ export default function WelcomePage({ onNext, onLanguageChange }: WelcomePagePro
             className="rounded shadow-sm"
           />
           
-          {/* Language Toggle */}
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => handleLanguageChange('en')}
-              className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <Image
-                src={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/english-53-40.png`}
-                alt="English"
-                width={53}
-                height={40}
-                className="rounded shadow-sm"
-              />
-            </button>
-            <button 
-              onClick={() => handleLanguageChange('fr')}
-              className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
-            >
-              <Image
-                src={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/french-53-40.png`}
-                alt="Français"
-                width={53}
-                height={40}
-                className="rounded shadow-sm"
-              />
-            </button>
+          {/* Language Section - Right Side */}
+          <div className="flex flex-col items-end">
+            {/* Flags */}
+            <div className="flex items-center space-x-2 mb-2">
+              <button
+                onClick={() => handleLanguageChange('en')}
+                className={`p-1 rounded ${language === 'en' ? 'ring-2 ring-blue-500' : ''}`}
+              >
+                <Image
+                  src={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/english-53-40.png`}
+                  alt="English"
+                  width={53}
+                  height={40}
+                  className="rounded shadow-sm"
+                />
+              </button>
+              <button
+                onClick={() => handleLanguageChange('fr')}
+                className={`p-1 rounded ${language === 'fr' ? 'ring-2 ring-blue-500' : ''}`}
+              >
+                <Image
+                  src={`${process.env.NEXT_PUBLIC_BASE_URL || ''}/french-53-40.png`}
+                  alt="Français"
+                  width={53}
+                  height={40}
+                  className="rounded shadow-sm"
+                />
+              </button>
+            </div>
+            
+            {/* Language Text */}
+            <p className="text-gray-600 text-sm">
+              Select Language / Sélectionnez la langue
+            </p>
           </div>
         </div>
 

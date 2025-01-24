@@ -6,6 +6,7 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  NEXT_USE_NETLIFY_EDGE = "true"
   NODE_VERSION = "20.0.0"
   NPM_VERSION = "9.0.0"
   ESLINT_NO_DEV_ERRORS = "true"
