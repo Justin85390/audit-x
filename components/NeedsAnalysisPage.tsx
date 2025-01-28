@@ -76,45 +76,45 @@ export const needsData: NeedCategory[] = [
   },
   {
     category: {
-      en: "Phone Communications",
+      en: "Phone Communication",
       fr: "Communications téléphoniques"
     },
     needs: [
       {
-        en: "Communicate fairly easily in telephone exchanges",
-        fr: "Communiquer facilement dans les échanges téléphoniques"
+        en: "Transfer calls/take simple messages",
+        fr: "Transférer des appels/ prendre des messages très simples"
       },
       {
-        en: "Exchange routine information in one's field over the phone",
-        fr: "Échanger des informations de routine dans le champ sur le téléphone"
+        en: "Exchange routine information in one's field by phone",
+        fr: "Echanger des informations courantes dans son domaine au téléphone"
       },
       {
-        en: "Transfer calls/take very simple messages",
-        fr: "Transférer des appels/prendre très simples messages"
+        en: "Communicate fairly easily in phone exchanges",
+        fr: "Communiquer assez facilement dans des échanges téléphoniques"
       }
     ]
   },
   {
     category: {
-      en: "Oral Exchanges",
-      fr: "Échanges oraux"
+      en: "Oral Communication",
+      fr: "Echanges Oraux"
     },
     needs: [
+      {
+        en: "Participate in limited very simple professional exchanges",
+        fr: "Participer de façon limitée à des échanges professionnels très simples"
+      },
+      {
+        en: "Interact in familiar professional situations",
+        fr: "Interagir dans des situations professionnelles connues"
+      },
       {
         en: "Be interactive during professional exchanges",
         fr: "Être interactif lors des échanges professionnels"
       },
       {
-        en: "Handle known professional situations",
-        fr: "Gérer les situations professionnelles connues"
-      },
-      {
-        en: "Interact in a nuanced way on a variety of professional subjects",
+        en: "Interact in a nuanced way on a variety of professional topics",
         fr: "Interagir de manière nuancée sur une variété de sujets professionnels"
-      },
-      {
-        en: "Participate in a limited way in very simple professional exchanges",
-        fr: "Participer de manière limitée dans des échanges professionnels très simples"
       }
     ]
   },
@@ -130,11 +130,11 @@ export const needsData: NeedCategory[] = [
       },
       {
         en: "Maintain a conversation, express opinions in a predictable field",
-        fr: "Maintenir une conversation, exprimer des opinions dans un champ prévisible"
+        fr: "Entretenir une conversation, exprimer ses opinions dans un domaine prévisible"
       },
       {
         en: "Actively participate in formal or informal conversation on a wide range of topics",
-        fr: "Participer activement à une conversation formelle ou informelle sur une grande variété de sujets"
+        fr: "Participer activement à une conversation formelle ou informelle sur une gamme large de sujets"
       }
     ]
   },
@@ -145,16 +145,16 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Understand and effectively explore professional documents related to one's field (emails, reports, minutes...)",
-        fr: "Comprendre et explorer efficacement les documents professionnels liés au champ (courriels, rapports, minutes...)"
+        en: "Decipher important information in a simple text",
+        fr: "Déchiffrer les informations importantes dans un texte simple (des mails, des notices, manuels ou rapports simples dans son domaine)"
       },
       {
-        en: "Decipher important information in a simple text (emails, notices, manuals or simple reports in one's field)",
-        fr: "Décoder des informations importantes dans un texte simple (courriels, avis, manuels ou rapports simples dans le champ)"
+        en: "Read professional documents related to one's field and extract essential information",
+        fr: "Lire des documents professionnels (mails, notice, memos) liés à son domaine et en extraire l'information essentielle"
       },
       {
-        en: "Read professional documents (emails, notice, memos) related to one's field and extract essential information",
-        fr: "Lire les documents professionnels (courriels, avis, mémos) liés au champ et extraire des informations essentielles"
+        en: "Understand and effectively explore professional documents",
+        fr: "Comprendre et exploiter efficacement des documents professionnels relatifs à son domaine (mails, comptes rendus, rapports...)"
       }
     ]
   },
@@ -165,16 +165,16 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Negotiate relatively autonomously",
-        fr: "Négocier relativement de manière autonome"
+        en: "Follow a simple negotiation in one's field, understand the essentials and intervene occasionally",
+        fr: "Suivre une négociation simple dans son domaine, comprendre l'essentiel et intervenir ponctuellement"
       },
       {
         en: "Participate in a negotiation, present arguments on known themes",
-        fr: "Participer à une négociation, présenter des arguments sur des thèmes connus"
+        fr: "Participer à une négociation, exposer ses arguments sur des thèmes connus"
       },
       {
-        en: "Follow a simple negotiation in one's field, understand the essentials and intervene occasionally",
-        fr: "Suivre une négociation simple dans le champ, comprendre les éléments essentiels et intervenir occasionnellement"
+        en: "Negotiate relatively autonomously",
+        fr: "Négocier de façon relativement autonome"
       }
     ]
   },
@@ -185,40 +185,40 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Give a simple and factual presentation with preparation in one's field",
-        fr: "Donner une présentation simple et factuelle avec préparation dans le champ"
+        en: "Make a simple and factual presentation with preparation in one's field",
+        fr: "Faire une présentation simple et factuelle avec préparation dans son domaine"
       },
       {
-        en: "Deliver formal or informal presentations with confidence, and answer questions with precision and diplomacy",
-        fr: "Réaliser des présentations formelles ou informelles avec confiance, et répondre aux questions avec précision et diplomatie"
+        en: "Deliver a coherent presentation and answer related questions",
+        fr: "Réaliser une présentation cohérente et répondre aux questions qui y sont liées"
       },
       {
-        en: "Give a coherent presentation and answer related questions",
-        fr: "Donner une présentation cohérente et répondre aux questions connexes"
+        en: "Deliver formal or informal presentations with ease, and answer questions with precision and diplomacy",
+        fr: "Réaliser des présentations formelles ou informelles avec aisance, et répondre aux questions avec précision et diplomatie"
       }
     ]
   },
   {
     category: {
       en: "Writing Professional Documents",
-      fr: "Écriture de documents professionnels"
+      fr: "Rédaction de documents professionnels"
     },
     needs: [
       {
-        en: "Write clear and comprehensible professional documents (letters, emails, memos, reports)",
-        fr: "Écrire des documents professionnels clairs et compréhensibles (lettres, courriels, mémos, rapports)"
+        en: "Write very simple and factual short professional documents",
+        fr: "Rédiger des documents professionnels courts (courriers, mails) très simples et factuels"
+      },
+      {
+        en: "Write short professional documents on a known subject",
+        fr: "Rédiger des documents professionnels courts sur un sujet connu courriers, mails, mémos, comptes rendus simples"
+      },
+      {
+        en: "Write clear and comprehensible professional documents",
+        fr: "Rédiger des documents professionnels clairs et compréhensibles (courriers, mails, mémos, rapports)"
       },
       {
         en: "Write complex professional documents with precision and nuance",
-        fr: "Écrire des documents professionnels complexes avec précision et nuance"
-      },
-      {
-        en: "Write very simple and factual short professional documents (letters, emails)",
-        fr: "Écrire très simples et factuels documents professionnels (lettres, courriels)"
-      },
-      {
-        en: "Write short professional documents on a known subject (letters, emails, memos, simple reports)",
-        fr: "Écrire des documents professionnels courts sur un sujet connu (lettres, courriels, mémos, rapports simples)"
+        fr: "Rédiger des documents professionnels complexes avec précision et nuance"
       }
     ]
   },
@@ -229,20 +229,20 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Intervene, argue and clarify one's point of view in a meeting",
-        fr: "Intervenir, argumenter et clarifier la vue d'un membre dans une réunion"
+        en: "Participate passively in a routine information meeting in one's field",
+        fr: "Participer de manière passive à une réunion d'information de routine dans son domaine"
       },
       {
         en: "Participate in a meeting and intervene in a clear and simple way to express one's point of view",
-        fr: "Participer à une réunion et intervenir de manière claire et simple pour exprimer la vue d'un membre"
+        fr: "Participer à une réunion et intervenir de manière claire et simple pour exprimer son point de vue"
       },
       {
-        en: "Actively participate and facilitate meetings effectively and spontaneously",
-        fr: "Participer activement et faciliter les réunions de manière efficace et spontanée"
+        en: "Intervene, argue and clarify one's point of view in meetings",
+        fr: "Intervenir, argumenter et préciser son point de vue en réunion"
       },
       {
-        en: "Participate passively in a routine information meeting in one's field",
-        fr: "Participer passivement dans une réunion d'informations de routine dans le champ"
+        en: "Participate actively and facilitate meetings effectively and spontaneously",
+        fr: "Participer activement et animer de façon efficace et spontanée des réunions"
       }
     ]
   },
@@ -253,20 +253,20 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Attend a teleconference or videoconference on a subject in one's field",
-        fr: "Assister à une conférence téléphonique ou vidéoconférence sur un sujet dans le champ"
+        en: "Attend a teleconference or videoconference on a topic in one's field",
+        fr: "Assister à une téléconférence ou une visioconférence sur un sujet de son domaine"
       },
       {
         en: "Understand and interact in teleconference or videoconference",
-        fr: "Comprendre et interagir dans une conférence téléphonique ou vidéoconférence"
+        fr: "Comprendre et interagir en téléconférence ou visioconférence"
       },
       {
         en: "Intervene, argue with confidence and precision in a teleconference or videoconference",
-        fr: "Intervenir, argumenter avec confiance et précision dans une conférence téléphonique ou vidéoconférence"
+        fr: "Intervenir, argumenter avec confiance et précision dans une téléconférence ou une visioconférence"
       },
       {
-        en: "Lead a teleconference or videoconference: actively participate and facilitate effectively and spontaneously",
-        fr: "Mener une conférence téléphonique ou vidéoconférence: participer activement et faciliter de manière efficace et spontanée"
+        en: "Lead a teleconference or videoconference: participate actively and facilitate effectively and spontaneously",
+        fr: "Mener une téléconférence ou une visioconférence : participer activement et animer de façon efficace et spontanée"
       }
     ]
   },
@@ -314,19 +314,19 @@ export const needsData: NeedCategory[] = [
     needs: [
       {
         en: "Acquire basic grammatical structures",
-        fr: "Acquérir des structures grammaticales de base"
-      },
-      {
-        en: "Improve use of complex grammatical structures",
-        fr: "Améliorer l'utilisation de structures grammaticales complexes"
+        fr: "Acquérir les structures grammaticales de base"
       },
       {
         en: "Improve syntax and consolidate grammatical structures",
         fr: "Améliorer la syntaxe et consolider les structures grammaticales"
       },
       {
+        en: "Improve use of complex grammatical structures",
+        fr: "Améliorer l'emploi des structures grammaticales complexes"
+      },
+      {
         en: "Master complex grammatical structures",
-        fr: "Maîtriser des structures grammaticales complexes"
+        fr: "Maitriser les structures grammaticales complexes"
       }
     ]
   },
@@ -337,24 +337,24 @@ export const needsData: NeedCategory[] = [
     },
     needs: [
       {
-        en: "Develop and expand general vocabulary",
-        fr: "Développer et élargir le vocabulaire général"
+        en: "Develop and expand professional vocabulary",
+        fr: "Développer et élargir le lexique professionnel"
       },
       {
-        en: "Develop and expand professional vocabulary",
-        fr: "Développer et élargir le vocabulaire professionnel"
+        en: "Develop and expand general vocabulary",
+        fr: "Développer et élargir le lexique général"
       }
     ]
   },
   {
     category: {
-      en: "Others",
+      en: "Other",
       fr: "Autres"
     },
     needs: [
       {
         en: "Pass a certification",
-        fr: "Réussir un certificat"
+        fr: "Passer une certification"
       },
       {
         en: "Intercultural",
